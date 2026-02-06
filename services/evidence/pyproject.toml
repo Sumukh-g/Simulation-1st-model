@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "gsip-evidence"
+version = "0.1.0"
+description = "GSIP Evidence Service - Document Ingestion and Retrieval"
+authors = ["GSIP Team"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.109.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+pydantic = "^2.5.3"
+pydantic-settings = "^2.1.0"
+sentence-transformers = "^2.2.2"
+pymilvus = "^2.3.5"
+minio = "^7.2.3"
+python-multipart = "^0.0.6"
+pypdf = "^3.17.4"
+python-docx = "^1.1.0"
+prometheus-client = "^0.19.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.2.0"
+pytest-asyncio = "^0.23.6"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

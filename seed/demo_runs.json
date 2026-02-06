@@ -1,0 +1,84 @@
+[
+  {
+    "id": "demo-toy-run-001",
+    "name": "Demo: ToyPack Navigation",
+    "domain_pack_id": "toy-pack-v1",
+    "objectives": {
+      "type": "minimize",
+      "metrics": ["distance_to_target"]
+    },
+    "constraints": [],
+    "budget": 100,
+    "initial_state": {
+      "x": 0.0,
+      "y": 0.0,
+      "target_x": 10.0,
+      "target_y": 10.0
+    },
+    "action_ranges": {
+      "dx": {"min": -5.0, "max": 5.0},
+      "dy": {"min": -5.0, "max": 5.0},
+      "steps": {"min": 5, "max": 20}
+    },
+    "default_fidelity": "mid",
+    "rubric_id": "default-single-objective"
+  },
+  {
+    "id": "demo-finance-run-001",
+    "name": "Demo: Portfolio Optimization",
+    "domain_pack_id": "finance-pack-v1",
+    "objectives": {
+      "type": "maximize",
+      "metrics": ["sharpe_ratio"]
+    },
+    "constraints": [
+      {"metric": "max_drawdown", "operator": "lte", "value": 0.2}
+    ],
+    "budget": 200,
+    "initial_state": {
+      "initial_capital": 100000,
+      "assets": ["SPY", "BND", "GLD", "CASH"],
+      "expected_returns": {"SPY": 0.10, "BND": 0.03, "GLD": 0.05, "CASH": 0.02},
+      "volatilities": {"SPY": 0.18, "BND": 0.05, "GLD": 0.15, "CASH": 0.0}
+    },
+    "action_ranges": {
+      "weights.SPY": {"min": 0.0, "max": 1.0},
+      "weights.BND": {"min": 0.0, "max": 1.0},
+      "weights.GLD": {"min": 0.0, "max": 0.3},
+      "weights.CASH": {"min": 0.0, "max": 0.5}
+    },
+    "default_fidelity": "mid",
+    "rubric_id": "finance-risk-adjusted"
+  },
+  {
+    "id": "demo-spatial-run-001",
+    "name": "Demo: Air Quality Simulation",
+    "domain_pack_id": "spatial-pack-v1",
+    "objectives": {
+      "type": "multi",
+      "metrics": ["safe_area_ratio", "coverage_ratio"],
+      "weights": [0.7, 0.3]
+    },
+    "constraints": [
+      {"metric": "critical_area_ratio", "operator": "lte", "value": 0.05}
+    ],
+    "budget": 150,
+    "initial_state": {
+      "grid_size": 100,
+      "diffusion_rate": 0.1,
+      "decay_rate": 0.01,
+      "time_steps": 100,
+      "safe_threshold": 0.5,
+      "warning_threshold": 0.8,
+      "critical_threshold": 1.0
+    },
+    "action_ranges": {
+      "source_count": {"min": 1, "max": 5},
+      "source_intensity": {"min": 0.5, "max": 3.0},
+      "source_x": {"min": 10, "max": 90},
+      "source_y": {"min": 10, "max": 90}
+    },
+    "default_fidelity": "mid",
+    "rubric_id": "spatial-coverage"
+  }
+]

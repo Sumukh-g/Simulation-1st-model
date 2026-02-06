@@ -1,0 +1,70 @@
+[
+  {
+    "id": "default-single-objective",
+    "name": "Default Single Objective Rubric",
+    "description": "Standard rubric for single-objective optimization",
+    "metric_weights": {
+      "primary_score": 1.0
+    },
+    "constraint_penalties": {},
+    "feasibility_weight": 1.0,
+    "confidence_penalty_rate": 0.1,
+    "aggregation_method": "weighted_sum",
+    "version": "1.0",
+    "approval_status": "approved"
+  },
+  {
+    "id": "finance-risk-adjusted",
+    "name": "Finance Risk-Adjusted Rubric",
+    "description": "Rubric for portfolio optimization balancing return and risk",
+    "metric_weights": {
+      "sharpe_ratio": 0.35,
+      "total_return": 0.25,
+      "max_drawdown": 0.25,
+      "volatility": 0.15
+    },
+    "constraint_penalties": {
+      "max_drawdown_violation": 0.5,
+      "concentration_violation": 0.3
+    },
+    "feasibility_weight": 1.0,
+    "confidence_penalty_rate": 0.15,
+    "aggregation_method": "weighted_sum",
+    "version": "1.0",
+    "approval_status": "approved"
+  },
+  {
+    "id": "spatial-coverage",
+    "name": "Spatial Coverage Rubric",
+    "description": "Rubric for spatial optimization balancing coverage and constraints",
+    "metric_weights": {
+      "coverage_ratio": 0.3,
+      "safe_area_ratio": 0.4,
+      "mean_concentration": 0.2,
+      "threshold_violations": 0.1
+    },
+    "constraint_penalties": {
+      "critical_area_exceeded": 1.0
+    },
+    "feasibility_weight": 1.0,
+    "confidence_penalty_rate": 0.1,
+    "aggregation_method": "weighted_sum",
+    "version": "1.0",
+    "approval_status": "approved"
+  },
+  {
+    "id": "multi-objective-pareto",
+    "name": "Multi-Objective Pareto Rubric",
+    "description": "Rubric for multi-objective optimization tracking Pareto frontier",
+    "metric_weights": {
+      "objective_1": 0.5,
+      "objective_2": 0.5
+    },
+    "constraint_penalties": {},
+    "feasibility_weight": 1.0,
+    "confidence_penalty_rate": 0.05,
+    "aggregation_method": "geometric_mean",
+    "version": "1.0",
+    "approval_status": "approved"
+  }
+]

@@ -1,0 +1,85 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: gsip-postgres
+    environment:
+      POSTGRES_USER: gsip
+      POSTGRES_PASSWORD: gsip_password
+      POSTGRES_DB: gsip
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gsip"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: gsip-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  minio:
+    image: minio/minio:latest
+    container_name: gsip-minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: gsip-temporal
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_SEEDS: gsip-postgres
+      POSTGRES_USER: gsip
+      POSTGRES_PWD: gsip_password
+      POSTGRES_DB: temporal
+    ports:
+      - "7233:7233"
+    depends_on:
+      - postgres
+
+  ray:
+    image: rayproject/ray:latest
+    container_name: gsip-ray
+    command: ["ray", "start", "--head", "--port=10002", "--ray-client-server-port=10001", "--dashboard-host=0.0.0.0", "--block"]
+    ports:
+      - "10001:10001"
+      - "8265:8265"
+    shm_size: "2gb"
+
+  milvus:
+    image: milvusdb/milvus:latest
+    container_name: gsip-milvus
+    command: ["milvus", "run", "standalone"]
+    environment:
+      DEPLOY_MODE: "standalone"
+      ETCD_USE_EMBED: "true"
+      MINIO_USE_EMBED: "true"
+    ports:
+      - "19530:19530"
+      - "9091:9091"
+    volumes:
+      - milvus_data:/var/lib/milvus
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  milvus_data:

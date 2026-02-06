@@ -1,0 +1,106 @@
+[
+  {
+    "id": "toy-pack-v1",
+    "name": "toy-pack",
+    "version": "1.0.0",
+    "description": "Simple 2D navigation demo - move towards a target",
+    "state_schema": {
+      "type": "object",
+      "properties": {
+        "x": {"type": "number", "description": "X coordinate"},
+        "y": {"type": "number", "description": "Y coordinate"},
+        "target_x": {"type": "number", "description": "Target X coordinate"},
+        "target_y": {"type": "number", "description": "Target Y coordinate"}
+      },
+      "required": ["x", "y", "target_x", "target_y"]
+    },
+    "action_schema": {
+      "type": "object",
+      "properties": {
+        "dx": {"type": "number", "minimum": -5, "maximum": 5},
+        "dy": {"type": "number", "minimum": -5, "maximum": 5},
+        "steps": {"type": "integer", "minimum": 1, "maximum": 100}
+      },
+      "required": ["dx", "dy", "steps"]
+    },
+    "metrics": ["distance_to_target", "path_length", "efficiency", "final_x", "final_y"],
+    "fidelity_modes": ["cheap", "mid", "high"],
+    "status": "active",
+    "is_certified": true
+  },
+  {
+    "id": "finance-pack-v1",
+    "name": "finance-pack",
+    "version": "1.0.0",
+    "description": "Portfolio backtesting with risk metrics and leakage detection",
+    "state_schema": {
+      "type": "object",
+      "properties": {
+        "initial_capital": {"type": "number", "minimum": 0},
+        "start_date": {"type": "string", "format": "date"},
+        "end_date": {"type": "string", "format": "date"},
+        "assets": {"type": "array", "items": {"type": "string"}},
+        "expected_returns": {"type": "object"},
+        "volatilities": {"type": "object"},
+        "transaction_cost_bps": {"type": "number"}
+      },
+      "required": ["initial_capital", "assets"]
+    },
+    "action_schema": {
+      "type": "object",
+      "properties": {
+        "weights": {"type": "object", "description": "Asset weights summing to 1.0"},
+        "rebalance_frequency": {"type": "string", "enum": ["daily", "weekly", "monthly", "quarterly"]}
+      },
+      "required": ["weights"]
+    },
+    "metrics": ["total_return", "annualized_return", "sharpe_ratio", "max_drawdown", "volatility", "sortino_ratio", "final_value"],
+    "fidelity_modes": ["cheap", "mid", "high"],
+    "status": "active",
+    "is_certified": true
+  },
+  {
+    "id": "spatial-pack-v1",
+    "name": "spatial-pack",
+    "version": "1.0.0",
+    "description": "Grid diffusion simulation with heatmap output (air quality, heat, etc.)",
+    "state_schema": {
+      "type": "object",
+      "properties": {
+        "grid_size": {"type": "integer", "minimum": 10, "maximum": 500},
+        "diffusion_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "decay_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "wind_x": {"type": "number", "minimum": -1, "maximum": 1},
+        "wind_y": {"type": "number", "minimum": -1, "maximum": 1},
+        "time_steps": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "safe_threshold": {"type": "number"},
+        "warning_threshold": {"type": "number"},
+        "critical_threshold": {"type": "number"}
+      },
+      "required": ["grid_size"]
+    },
+    "action_schema": {
+      "type": "object",
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "x": {"type": "integer"},
+              "y": {"type": "integer"},
+              "intensity": {"type": "number"},
+              "radius": {"type": "number"}
+            }
+          }
+        },
+        "mitigation_zones": {"type": "array"}
+      },
+      "required": ["sources"]
+    },
+    "metrics": ["coverage_ratio", "max_concentration", "mean_concentration", "safe_area_ratio", "warning_area_ratio", "critical_area_ratio", "threshold_violations"],
+    "fidelity_modes": ["cheap", "mid", "high"],
+    "status": "active",
+    "is_certified": true
+  }
+]

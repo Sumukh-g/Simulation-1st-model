@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build / Next
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.env
+*.egg-info/
+.eggs/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Logs / cache
+*.log
+.cache/
+.npm
+.eslintcache
+
+# Env files (keep .env.example if any)
+.env
+.env.local
+.env.*.local
+
+# Test / coverage
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Misc
+~$*
