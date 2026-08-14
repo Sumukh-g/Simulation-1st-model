@@ -55,7 +55,7 @@ async def search(request: SearchRequest):
             limit=request.limit,
             filter_expr=filter_expr,
         )
-    except Exception as e:
+    except Exception:
         # Return empty results on error
         hits = []
     

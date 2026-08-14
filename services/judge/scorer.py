@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -276,14 +275,17 @@ class ThresholdScorer:
                 if t1_val >= value >= t2_val:
                     # Interpolate
                     if t1_val == float("inf"):
-                        return t1_score
+                        # Open-ended segment: interpolation is undefined, but a
+                        # value sitting exactly on the finite bound scores as
+                        # that bound rather than as the open end.
+                        return t2_score if value == t2_val else t1_score
                     ratio = (t1_val - value) / (t1_val - t2_val) if t1_val != t2_val else 0
                     return t1_score + ratio * (t2_score - t1_score)
             else:
                 if t1_val <= value <= t2_val:
                     # Interpolate
                     if t1_val == float("-inf"):
-                        return t1_score
+                        return t2_score if value == t2_val else t1_score
                     ratio = (value - t1_val) / (t2_val - t1_val) if t2_val != t1_val else 0
                     return t1_score + ratio * (t2_score - t1_score)
 
@@ -734,6 +736,8 @@ class DeterministicScorer:
         # Placeholder for actual LLM call
         # In production, this would call the LLM API
 
+        # noqa keeps the prompt contract in the tree until the LLM adapter lands:
+        # the wording is the guarantee that the model may not restate a score.
         prompt = f"""You are explaining a deterministic scoring result.
 You may ONLY describe the mathematical decisions that were already made.
 You CANNOT change any scores or make new judgments.
@@ -745,7 +749,7 @@ Final score: {result.score:.4f}
 Level: {result.threshold_level.value}
 
 Write a 2-3 sentence natural language summary of why this score was assigned,
-referencing the specific metrics and penalties that contributed most."""
+referencing the specific metrics and penalties that contributed most."""  # noqa: F841
 
         # For now, return the math summary with a header
         return f"**Explanation**\n\n{math_summary}"

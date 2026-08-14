@@ -142,9 +142,6 @@ class DomainPackBase(ABC):
         ranges = {}
         
         for field_name, field_info in schema.model_fields.items():
-            # Extract constraints from field metadata
-            metadata = field_info.metadata if hasattr(field_info, 'metadata') else []
-            
             # Check for numeric bounds
             if hasattr(field_info, 'annotation'):
                 annotation = field_info.annotation

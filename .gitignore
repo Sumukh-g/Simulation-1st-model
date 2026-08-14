@@ -43,8 +43,14 @@ Thumbs.db
 # Test / coverage
 coverage/
 .coverage
+coverage.xml
 htmlcov/
 .pytest_cache/
+.ruff_cache/
+
+# Benchmark output. Runs are reproducible from configs/benchmarks/ plus the
+# seed, so the JSON is a build artifact rather than a source of truth.
+results/
 
 # Misc
 ~$*

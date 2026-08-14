@@ -1,6 +1,5 @@
 """Document ingestion endpoints."""
 import uuid
-from typing import List, Optional
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -52,7 +51,7 @@ def extract_text(file_content: bytes, content_type: str, filename: str) -> str:
         try:
             data = json.loads(file_content.decode("utf-8"))
             return json.dumps(data, indent=2)
-        except:
+        except (ValueError, UnicodeDecodeError):
             return file_content.decode("utf-8", errors="ignore")
     
     elif content_type == "text/csv" or filename.endswith(".csv"):

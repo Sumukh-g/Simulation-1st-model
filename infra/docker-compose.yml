@@ -1,8 +1,10 @@
-version: "3.8"
-
 services:
   postgres:
-    image: postgres:15
+    # pgvector build of the same Postgres major version, so existing volumes
+    # keep working. The extension is what backs retrieval at launch (see the
+    # build brief's pgvector-before-Milvus swap); having it available now avoids
+    # an infrastructure change when the retrieval port lands.
+    image: pgvector/pgvector:pg15
     container_name: gsip-postgres
     environment:
       POSTGRES_USER: gsip

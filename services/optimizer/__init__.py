@@ -19,6 +19,13 @@ from .optimizer import (
     ParetoPoint,
     UnifiedOptimizer,
 )
+from .backends import (
+    Evaluation,
+    OptimiserBackend,
+    create_backend,
+    list_backends,
+    register_backend,
+)
 
 __all__ = [
     # Core optimizers
@@ -44,4 +51,10 @@ __all__ = [
     "StopReason",
     "StoppingConfig",
     "StoppingRules",
+    # Backend interface
+    "OptimiserBackend",
+    "Evaluation",
+    "create_backend",
+    "list_backends",
+    "register_backend",
 ]

@@ -1,13 +1,10 @@
 """Claim DB: Atomic claims with provenance and verification."""
 from __future__ import annotations
 
-import hashlib
-import json
 import re
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -337,8 +334,7 @@ class ClaimVerifier:
             for i, claim_a in enumerate(group):
                 for claim_b in group[i + 1:]:
                     # Check for conflicts
-                    conflict = self._check_pair(claim_a, claim_b)
-                    if conflict:
+                    for conflict in self._check_pair(claim_a, claim_b):
                         conflicts.append(conflict)
                         # Update claim confidence
                         claim_a.conflicts.append(conflict.id)
@@ -353,24 +349,38 @@ class ClaimVerifier:
         self,
         claim_a: Claim,
         claim_b: Claim,
-    ) -> Optional[ClaimConflict]:
-        """Check a pair of claims for conflicts."""
+    ) -> List[ClaimConflict]:
+        """
+        Check a pair of claims for conflicts.
+
+        A pair can conflict on more than one axis at once — two numeric claims
+        may both disagree on value and be separated by enough time that the
+        disagreement is explained by staleness. Both are reported so the
+        consumer can tell "the sources contradict each other" apart from
+        "one source is simply out of date".
+        """
         # Same subject, check predicate
         if claim_a.predicate != claim_b.predicate:
-            return None
+            return []
+
+        found: List[ClaimConflict] = []
 
         # Numeric discrepancy
         if (
             claim_a.claim_type == ClaimType.NUMERIC
             and claim_b.claim_type == ClaimType.NUMERIC
         ):
-            return self._check_numeric_conflict(claim_a, claim_b)
+            numeric_conflict = self._check_numeric_conflict(claim_a, claim_b)
+            if numeric_conflict:
+                found.append(numeric_conflict)
 
         # Freshness/recency conflict
         if claim_a.claim_date and claim_b.claim_date:
-            return self._check_freshness_conflict(claim_a, claim_b)
+            freshness_conflict = self._check_freshness_conflict(claim_a, claim_b)
+            if freshness_conflict:
+                found.append(freshness_conflict)
 
-        return None
+        return found
 
     def _check_numeric_conflict(
         self,
@@ -493,9 +503,6 @@ class ClaimVerifier:
                 consistency[subject] = 1.0
                 continue
 
-            # Count unique sources
-            sources = set(c.source_document_id for c in group)
-
             # Count agreements vs conflicts
             agreements = 0
             total_pairs = 0
@@ -505,8 +512,7 @@ class ClaimVerifier:
                     total_pairs += 1
                     # Check if they agree (no conflict)
                     if claim_a.source_document_id != claim_b.source_document_id:
-                        conflict = self._check_pair(claim_a, claim_b)
-                        if conflict is None:
+                        if not self._check_pair(claim_a, claim_b):
                             agreements += 1
 
             if total_pairs > 0:

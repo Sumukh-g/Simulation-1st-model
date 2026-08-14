@@ -1,0 +1,53 @@
+# Runtime dependencies for the container image.
+#
+# One image serves every Python service, differing only by the command it runs.
+# That is deliberate: the services currently share code across package
+# boundaries (the orchestrator imports the API's models and the sim fabric, the
+# sim fabric imports the domain packs), so splitting them into separate images
+# today would mean untangling that coupling first. Because the entrypoints are
+# already distinct per service, splitting later is a packaging change, not a
+# redesign.
+#
+# Versions track the per-service pyproject.toml constraints. Kept off this list:
+# sentence-transformers, which pulls in torch and is only needed by the evidence
+# service's embedding path (see docker/Dockerfile.evidence).
+
+# API surface
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9
+sse-starlette==2.1.0
+prometheus-client==0.20.0
+
+# Models and settings
+pydantic==2.7.1
+pydantic-settings==2.2.1
+pyyaml==6.0.1
+
+# Persistence
+sqlalchemy==2.0.30
+asyncpg==0.29.0
+alembic==1.13.1
+psycopg2-binary==2.9.9
+pgvector==0.2.5
+redis==5.0.4
+
+# Orchestration and parallel evaluation
+temporalio==1.6.0
+ray==2.53.0
+
+# Numerics and the optimiser
+numpy==2.0.2
+scipy==1.14.1
+scikit-learn==1.5.2
+
+# Retrieval and artifacts
+pymilvus==2.6.8
+minio==7.2.7
+
+# Document ingestion
+pypdf==4.2.0
+python-docx==1.1.2
+
+# Outbound HTTP
+httpx==0.27.0

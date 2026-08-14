@@ -1,0 +1,88 @@
+# Application services, as an overlay on the infrastructure compose file.
+#
+# Kept separate so `make docker-up` can still bring up only the dependencies for
+# local development, which is the common case while working on one service.
+#
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.apps.yml up -d
+#
+# or simply: make up
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: gsip-app:latest
+    container_name: gsip-api
+    command:
+      ["uvicorn", "services.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://gsip:gsip_password@postgres:5432/gsip
+      REDIS_URL: redis://redis:6379/0
+      TEMPORAL_HOST: temporal:7233
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  orchestrator:
+    image: gsip-app:latest
+    container_name: gsip-orchestrator
+    command: ["python", "-m", "services.orchestrator.worker"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://gsip:gsip_password@postgres:5432/gsip
+      REDIS_URL: redis://redis:6379/0
+      TEMPORAL_HOST: temporal:7233
+      RAY_ADDRESS: ray://ray:10001
+      MINIO_ENDPOINT: minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+      api:
+        condition: service_started
+
+  judge:
+    image: gsip-app:latest
+    container_name: gsip-judge
+    command:
+      ["uvicorn", "services.judge.main:app", "--host", "0.0.0.0", "--port", "8001"]
+    environment:
+      DATABASE_URL: postgresql+asyncpg://gsip:gsip_password@postgres:5432/gsip
+      EVIDENCE_SERVICE_URL: http://evidence:8002
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  evidence:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.evidence
+    image: gsip-evidence:latest
+    container_name: gsip-evidence
+    command:
+      ["uvicorn", "services.evidence.main:app", "--host", "0.0.0.0", "--port", "8002"]
+    environment:
+      MILVUS_HOST: milvus
+      MILVUS_PORT: "19530"
+      MINIO_ENDPOINT: minio:9000
+    ports:
+      - "8002:8002"
+    depends_on:
+      milvus:
+        condition: service_started
+      minio:
+        condition: service_started

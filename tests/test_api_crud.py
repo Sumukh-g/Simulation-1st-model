@@ -3,11 +3,21 @@ import os
 import uuid
 
 import pytest
+import pytest_asyncio
 from alembic import command
 from alembic.config import Config
 from httpx import AsyncClient
-from testcontainers.postgres import PostgresContainer
 from sqlalchemy import select
+
+# These tests bring up a real Postgres in Docker. Where that isn't available
+# they are skipped rather than failing collection for the whole suite.
+postgres_module = pytest.importorskip(
+    "testcontainers.postgres",
+    reason="testcontainers is required to run the API integration tests",
+)
+PostgresContainer = postgres_module.PostgresContainer
+
+pytestmark = pytest.mark.integration
 
 
 async def _get_or_create(session, model, defaults=None, **kwargs):
@@ -45,7 +55,7 @@ def apply_migrations(database_url):
     command.upgrade(config, "head")
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def api_client(database_url):
     from services.api.main import app
 
@@ -53,7 +63,7 @@ async def api_client(database_url):
         yield client
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def seeded_admin(database_url):
     from services.api.db import models
     from services.api.db.database import AsyncSessionLocal
@@ -86,7 +96,7 @@ async def seeded_admin(database_url):
         return {"org_id": org.id, "user_id": user.id}
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def seeded_viewer(database_url):
     from services.api.db import models
     from services.api.db.database import AsyncSessionLocal

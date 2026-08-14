@@ -1,0 +1,24 @@
+# Smoke validation: every backend on one problem, at an equal budget.
+#
+# Deliberately small and low-dimensional so it finishes in a couple of minutes
+# and can gate a commit. It shows the engine runs and converges; it is far too
+# short to rank the backends against each other. Use zdt_full.yaml for that.
+#
+#   python scripts/run_benchmark.py --spec configs/benchmarks/zdt1_smoke.yaml
+
+defaults:
+  budget: 200
+  batch_size: 20
+  seed: 42
+  n_variables: 5
+
+runs:
+  - problem: zdt1
+    backends: [evolutionary, bayesian]
+
+  - problem: zdt1
+    backend: hybrid
+    # The acquisition search dominates wall-clock cost; turned down here to keep
+    # the smoke run quick.
+    backend_options:
+      bayesian_n_restarts: 2

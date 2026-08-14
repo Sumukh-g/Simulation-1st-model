@@ -10,17 +10,13 @@ These tests prove that:
 These are the NON-NEGOTIABLE tests that must pass before the system
 can be considered "working".
 """
-import asyncio
-import hashlib
 import json
 import pytest
-from typing import Any, Dict, List
 
 from services.orchestrator.activities.formalizer import (
     formalize_objective,
     detect_domain,
     detect_direction,
-    FormalizedObjective,
 )
 from services.orchestrator.activities.pipeline import (
     generate_structured_scenarios,
@@ -420,10 +416,6 @@ class TestDifferentPromptsProduceDifferentRankings:
                 scores2.append(score)
             else:
                 scores2.append(-distance)
-        
-        # The best scenario according to different objectives should differ
-        best_idx1 = scores1.index(max(scores1))
-        best_idx2 = scores2.index(max(scores2))
         
         # Note: They might be the same by chance, but the ranking order should differ
         ranking1 = sorted(range(len(scores1)), key=lambda i: scores1[i], reverse=True)

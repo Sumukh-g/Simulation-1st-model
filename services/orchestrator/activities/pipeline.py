@@ -5,12 +5,12 @@ import hashlib
 import json
 import logging
 import random
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from temporalio import activity
 
 from services.api.moe import MoECommittee, MoETask, TaskStage
-from .formalizer import formalize_objective, FormalizedObjective, detect_domain
+from .formalizer import formalize_objective
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,6 @@ async def generate_structured_scenarios(run_spec: Dict[str, Any]) -> List[Dict[s
     
     # Get objectives to inform scenario generation
     objectives = run_spec.get("objectives", {})
-    constraints = run_spec.get("constraints", [])
     
     # If no action_ranges provided, try to get from domain pack
     if not action_ranges:

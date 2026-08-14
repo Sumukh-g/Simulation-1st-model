@@ -1,0 +1,26 @@
+# Canonical-size validation: the ZDT suite at the dimensions used in the
+# literature (30 variables for ZDT1-3, 10 for ZDT4 and ZDT6).
+#
+# This is the run that produces defensible numbers. It takes minutes to hours
+# rather than seconds, so it is not part of the test suite.
+#
+#   python scripts/run_benchmark.py --spec configs/benchmarks/zdt_canonical.yaml \
+#       --output results/zdt_canonical.json
+#
+# Only the population-based backend is included. At this dimensionality the GP
+# backends spend their time optimising the acquisition function rather than
+# evaluating the problem, which is the finding that motivates a BoTorch backend
+# rather than something to work around here.
+
+defaults:
+  budget: 5000
+  batch_size: 50
+  seed: 42
+  backend: evolutionary
+
+runs:
+  - problem: zdt1
+  - problem: zdt2
+  - problem: zdt3
+  - problem: zdt4
+  - problem: zdt6

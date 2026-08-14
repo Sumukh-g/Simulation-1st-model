@@ -1,6 +1,6 @@
 """Evolutionary Optimization for GSIP."""
 import numpy as np
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 class EvolutionaryOptimizer:
@@ -154,7 +154,13 @@ class EvolutionaryOptimizer:
             distances[sorted_indices[-1]] = float('inf')
             
             # Compute objective range
-            values = [population[front[i]][1].get(obj_name, 0) if population[front[i]][1] else 0 for i in front]
+            # `front` holds population indices; iterate positions within the
+            # front, not the indices themselves, or a front whose members sit
+            # beyond its own length indexes out of range.
+            values = [
+                population[front[i]][1].get(obj_name, 0) if population[front[i]][1] else 0
+                for i in range(n)
+            ]
             obj_range = max(values) - min(values)
             
             if obj_range > 0:

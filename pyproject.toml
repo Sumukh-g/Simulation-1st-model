@@ -1,0 +1,51 @@
+# Monorepo-wide tooling configuration.
+#
+# Runtime dependencies stay in the per-service pyproject.toml files so each
+# service can still be built and deployed on its own. This file only carries
+# the settings that must agree across the whole repo: how tests are collected,
+# what the linter enforces, and what coverage measures.
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+# Makes core/, libs/, compute/ and services/ importable without installing
+# every service first, which is what the cross-service tests in tests/ expect.
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = [
+    "integration: requires live infrastructure (Docker/Postgres); skipped when unavailable",
+    "slow: long-running, e.g. a full benchmark sweep rather than a smoke budget",
+]
+
+[tool.ruff]
+line-length = 100
+# Lowest interpreter the code must run on. Containers and CI use 3.12, but
+# local development is on 3.11, so no 3.12-only syntax may be suggested.
+target-version = "py311"
+extend-exclude = ["apps", "docs", ".venv", "node_modules"]
+
+[tool.ruff.lint]
+# Deliberately the default rule set for now. Widening it (import sorting,
+# pyupgrade, line length) would rewrite most of the existing tree, which is
+# churn Phase 0 has no reason to take on.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.ruff.lint.per-file-ignores]
+# One-off document generators, not part of the platform. Their imports sit in a
+# try/except that installs python-docx on failure, so the "unused" names are
+# there to make the guard fail on an incomplete install.
+"scripts/create_comprehensive_paper.py" = ["F401"]
+"scripts/create_final_paper.py" = ["F401"]
+"scripts/create_word_doc.py" = ["F401"]
+
+[tool.coverage.run]
+source = ["core", "libs", "compute", "services"]
+omit = ["*/alembic/*", "*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+]

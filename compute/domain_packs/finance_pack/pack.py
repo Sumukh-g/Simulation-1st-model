@@ -1,9 +1,8 @@
 """FinancePack - Portfolio backtesting with leakage detection."""
 import math
-import random
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Type
+from datetime import datetime
+from typing import Dict, List, Type
 
 import numpy as np
 from pydantic import BaseModel, Field, field_validator
@@ -14,7 +13,6 @@ from ..sdk import (
     Fidelity,
     OutcomeBundle,
     MetricBundle,
-    UncertaintyBundle,
     FeasibilityResult,
     CostEstimate,
     ObjectiveSpec,
@@ -216,7 +214,6 @@ class FinancePack(DomainPackBase):
         final_value = outcome.final_state["final_value"]
         total_return = outcome.final_state["total_return"]
         
-        n_periods = outcome.artifacts.get("n_periods", 252)
         annualization_factor = 252 / max(len(returns_array), 1)  # Assume daily base
         
         # Annualized return

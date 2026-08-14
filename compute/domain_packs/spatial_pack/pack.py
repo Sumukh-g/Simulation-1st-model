@@ -1,6 +1,6 @@
 """SpatialPack - Grid-based diffusion simulation with heatmap output."""
 import time
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Type
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -11,7 +11,6 @@ from ..sdk import (
     Fidelity,
     OutcomeBundle,
     MetricBundle,
-    UncertaintyBundle,
     FeasibilityResult,
     CostEstimate,
     ObjectiveSpec,
@@ -409,7 +408,6 @@ class SpatialPack(DomainPackBase):
             
         elif mask_type == "confidence":
             # For demonstration - would need actual confidence data
-            confidence_threshold = kwargs.get("confidence", 0.9)
             mask = np.ones_like(grid, dtype=bool)
         
         # Apply mask
