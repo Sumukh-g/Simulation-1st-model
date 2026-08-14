@@ -31,7 +31,6 @@ with workflow.unsafe.imports_passed_through():
         persist_scenarios_and_instances,
         fetch_cached_outcomes,
         persist_metric_results,
-        persist_uncertainty_results,
         persist_optimizer_step,
         persist_judge_scores,
         create_evidence_pack,

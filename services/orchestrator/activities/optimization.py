@@ -3,7 +3,7 @@ import hashlib
 import json
 import random
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from temporalio import activity
 

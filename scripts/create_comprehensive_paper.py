@@ -32,10 +32,8 @@ except ImportError:
     print("Installing python-docx...")
     os.system(f"{sys.executable} -m pip install python-docx")
     from docx import Document
-    from docx.shared import Inches, Pt, Cm, Twips
-    from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_LINE_SPACING
-    from docx.enum.style import WD_STYLE_TYPE
-    from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.shared import Inches, Pt, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 
 def set_cell_shading(cell, color):

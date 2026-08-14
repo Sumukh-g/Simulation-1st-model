@@ -1,6 +1,6 @@
 from datetime import datetime
 import uuid
-from typing import AsyncIterator, List, Optional
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
 from sse_starlette.sse import EventSourceResponse
@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.db.database import AsyncSessionLocal, get_session
 from services.api.db import models
-from services.api.auth import get_current_user, UserContext, require_permission
+from services.api.auth import get_current_user, UserContext
 from services.orchestrator.workflows.simulation_run import SimulationRunWorkflow
 from temporalio.client import Client as TemporalClient
 

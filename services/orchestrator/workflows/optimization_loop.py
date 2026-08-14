@@ -1,6 +1,6 @@
 """Optimization Loop Workflow."""
 from datetime import timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy

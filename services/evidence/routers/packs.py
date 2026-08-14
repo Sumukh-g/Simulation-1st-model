@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 
 from ..embeddings import get_embedding
 from ..evidence_pack import (
-    EvidencePack,
     EvidencePackBuilder,
     evidence_pack_store,
 )

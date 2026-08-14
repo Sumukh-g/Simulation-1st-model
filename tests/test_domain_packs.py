@@ -1,5 +1,4 @@
 """Tests for Domain Packs."""
-import pytest
 from compute.domain_packs.sdk import Fidelity, DomainPackRegistry
 from compute.domain_packs.toy_pack import ToyPack
 from compute.domain_packs.finance_pack import FinancePack

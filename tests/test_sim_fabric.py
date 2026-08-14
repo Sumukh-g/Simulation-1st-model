@@ -1,11 +1,7 @@
 """Tests for Simulation Fabric components."""
-import hashlib
-import json
-import math
 
-import pytest
 
-from services.sim_fabric.invariants import InvariantChecker, InvariantViolation
+from services.sim_fabric.invariants import InvariantChecker
 from services.sim_fabric.cache import ResultCache
 
 

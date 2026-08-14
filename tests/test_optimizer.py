@@ -1,5 +1,4 @@
 """Tests for optimization algorithms."""
-import pytest
 import numpy as np
 from services.optimizer import (
     BayesianOptimizer,
@@ -10,7 +9,6 @@ from services.optimizer import (
     OptimizerConfig,
     OptimizerStrategy,
     Objective,
-    Candidate,
     Constraint,
     ConstraintType,
     ConstraintHandler,

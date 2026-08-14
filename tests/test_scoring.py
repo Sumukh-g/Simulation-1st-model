@@ -13,7 +13,6 @@ from services.judge import (
     ContextSelector,
     ThresholdScorer,
     ConfidencePenaltyCalculator,
-    THRESHOLD_SCORES,
 )
 
 

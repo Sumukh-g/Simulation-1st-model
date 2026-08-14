@@ -1,5 +1,4 @@
 """Tests for Run Ledger."""
-import pytest
 from libs.ledger.gsip_ledger.hashing import (
     compute_scenario_hash,
     compute_run_hash,

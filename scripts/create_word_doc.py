@@ -23,9 +23,8 @@ except ImportError:
     print("Installing python-docx...")
     os.system(f"{sys.executable} -m pip install python-docx")
     from docx import Document
-    from docx.shared import Inches, Pt, Cm
+    from docx.shared import Inches, Cm
     from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.enum.style import WD_STYLE_TYPE
     from docx.enum.table import WD_TABLE_ALIGNMENT
 
 

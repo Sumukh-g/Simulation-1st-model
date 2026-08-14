@@ -10,6 +10,8 @@ The General Simulation Intelligence Platform (GSIP) is a decision-laboratory web
 5. Applies expert judgment with deterministic scoring
 6. Produces defensible outputs with full audit trails
 
+For a step-by-step description of how a user question flows through the system (formalization, scenario generation, simulation, scoring, optimization), see [simulation-architecture-overview.md](simulation-architecture-overview.md).
+
 ## System Architecture
 
 ```

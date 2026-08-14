@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 class Settings(BaseSettings):
     """API gateway settings."""
 
-    DATABASE_URL: str = "postgresql+asyncpg://gsip:gsip_password@localhost:5432/gsip"
+    DATABASE_URL: str = "postgresql+asyncpg://gsip:gsip_password@localhost:5433/gsip"
     REDIS_URL: str = "redis://localhost:6379/0"
 
     JWT_SECRET: str = "change-me"

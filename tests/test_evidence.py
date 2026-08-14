@@ -1,16 +1,11 @@
 """Tests for Evidence Service."""
 from datetime import datetime, timedelta, timezone
 
-import pytest
 
 from services.evidence import (
     chunk_text,
-    ChunkReference,
-    EvidencePack,
     EvidencePackBuilder,
     EvidencePackStore,
-    Claim,
-    ClaimConflict,
     ClaimType,
     ConflictType,
     ClaimDB,

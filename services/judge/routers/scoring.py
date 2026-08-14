@@ -9,7 +9,6 @@ from ..scorer import (
     MetricValue,
     RubricSpec,
     JudgeResult,
-    ThresholdSpec,
 )
 
 router = APIRouter()

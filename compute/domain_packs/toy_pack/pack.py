@@ -1,7 +1,7 @@
 """ToyPack - A minimal domain pack for testing the simulation pipeline."""
 import math
 import time
-from typing import Dict, List, Optional, Type
+from typing import Dict, Optional, Type
 
 import numpy as np
 from pydantic import BaseModel, Field

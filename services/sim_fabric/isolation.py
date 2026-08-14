@@ -4,7 +4,6 @@ from __future__ import annotations
 import logging
 import os
 import subprocess
-import tempfile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
@@ -212,7 +211,6 @@ class ContainerIsolation(IsolationStrategy):
         run_id: str,
     ) -> Dict[str, Any]:
         """Execute in Docker container (stub)."""
-        import json
 
         # This is a stub - in production, this would:
         # 1. Build/pull container image for the domain pack

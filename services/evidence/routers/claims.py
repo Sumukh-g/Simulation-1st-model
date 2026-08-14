@@ -3,11 +3,9 @@ from datetime import datetime
 from typing import List, Optional
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from ..claims import (
-    Claim,
-    ClaimConflict,
     ClaimType,
     claim_db,
 )
