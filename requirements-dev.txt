@@ -23,6 +23,12 @@ httpx==0.27.0
 sse-starlette==2.1.0
 prometheus-client==0.20.0
 
+# LLM providers (OpenAI-compatible client) + .env loading. Imported by
+# services/common/llm.py, which powers the formalizer, MoE experts, and the
+# run narrative. openai is imported lazily so unit tests can mock it.
+openai==1.59.8
+python-dotenv==1.2.1
+
 # Persistence
 sqlalchemy==2.0.30
 alembic==1.13.1

@@ -1,9 +1,7 @@
 """Objective Formalizer - Converts user questions into structured ObjectiveSpecs."""
 from __future__ import annotations
 
-import json
 import logging
-import os
 import re
 from typing import Any, Dict, List, Optional
 
@@ -131,9 +129,27 @@ DOMAIN_ACTION_RANGES = {
     "toy-pack": {
         "dx": {"min": -10.0, "max": 10.0},
         "dy": {"min": -10.0, "max": 10.0},
-        "steps": {"min": 5, "max": 50},
+        "steps": {"min": 5, "max": 50, "type": "int"},
     },
 }
+
+
+def _pack_defaults(domain: str, action_ranges: Dict[str, Any]) -> Dict[str, Any]:
+    """Fill initial_state / action_ranges from the registered domain pack when possible."""
+    initial_state: Dict[str, Any] = {}
+    ranges = dict(action_ranges or {})
+    try:
+        import compute.domain_packs  # noqa: F401
+        from compute.domain_packs.sdk import DomainPackRegistry
+
+        pack = DomainPackRegistry.create_instance(domain)
+        if pack is not None:
+            initial_state = pack.get_default_state() or {}
+            if not ranges:
+                ranges = pack.get_action_ranges() or {}
+    except Exception as exc:
+        logger.debug("Could not load pack defaults for %s: %s", domain, exc)
+    return {"initial_state": initial_state, "action_ranges": ranges}
 
 
 def detect_domain(question: str, domain_pack_hint: Optional[str] = None) -> str:
@@ -313,7 +329,8 @@ def formalize_heuristic(
     
     # Get action ranges for domain
     action_ranges = DOMAIN_ACTION_RANGES.get(domain, {})
-    
+    initial_state = _pack_defaults(domain, action_ranges)
+
     return FormalizedObjective(
         description=question,
         metrics=metrics,
@@ -324,9 +341,34 @@ def formalize_heuristic(
         success_criteria=[f"Achieve {direction}d objective metrics"],
         required_outputs=["ranked_scenarios", "metric_results", "uncertainty"],
         domain_hints=[domain],
-        action_ranges=action_ranges,
-        initial_state={},
+        action_ranges=initial_state["action_ranges"],
+        initial_state=initial_state["initial_state"],
     )
+
+
+def _coerce_metric(raw: Dict[str, Any], allowed: Optional[List[str]]) -> Optional[ObjectiveMetric]:
+    """Validate one LLM-proposed metric, grounding its name to the pack when possible."""
+    if not isinstance(raw, dict):
+        return None
+    name = str(raw.get("name", "")).strip()
+    if not name:
+        return None
+    # Ground to the pack's real metrics: drop hallucinated names the pack can't score.
+    if allowed:
+        if name not in allowed:
+            match = next((m for m in allowed if m.lower() == name.lower()), None)
+            if match is None:
+                return None
+            name = match
+    direction = str(raw.get("direction", "maximize")).lower()
+    if direction not in {"minimize", "maximize"}:
+        direction = "maximize"
+    try:
+        weight = float(raw.get("weight", 1.0))
+    except (TypeError, ValueError):
+        weight = 1.0
+    weight = max(0.0, min(weight, 1.0))
+    return ObjectiveMetric(name=name, direction=direction, weight=weight)
 
 
 def formalize_with_llm(
@@ -335,87 +377,92 @@ def formalize_with_llm(
     available_metrics: Optional[List[str]] = None,
 ) -> Optional[FormalizedObjective]:
     """
-    Formalize objectives using an LLM.
-    
-    Returns None if LLM is unavailable or fails.
+    Formalize objectives using an LLM (fast tier, multi-provider with fallback).
+
+    Returns None if no LLM provider is available or the call fails, so the
+    caller transparently falls back to deterministic heuristics.
     """
-    # Check for LLM availability
-    api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        logger.info("No LLM API key found, using heuristic formalization")
+    from services.common import llm
+
+    if not llm.is_enabled() or not llm.available_providers():
+        logger.info("No LLM provider configured; using heuristic formalization")
         return None
-    
+
+    domain = detect_domain(question, domain_pack)
+
+    system_prompt = (
+        "You convert a user's optimization/simulation question into a structured "
+        "objective specification. Respond with ONLY a JSON object of this shape:\n"
+        "{\n"
+        '  "metrics": [{"name": str, "direction": "maximize"|"minimize", "weight": 0.0-1.0}],\n'
+        '  "primary_direction": "maximize"|"minimize",\n'
+        '  "constraints": [{"name": str, "constraint_type": "min"|"max"|"eq"|"range", "value": number|null, "is_hard": bool}],\n'
+        '  "horizon": str|null,\n'
+        '  "context_tags": [str],\n'
+        '  "success_criteria": [str]\n'
+        "}\n"
+        "Rules: choose 1-3 metrics that best capture the user's goal. "
+        "Weights should sum to roughly 1.0. Do not invent metrics that are not "
+        "measurable. If a list of available metrics is provided, you MUST only "
+        "use names from that list."
+    )
+
+    user_prompt = f"Question: {question}\nDomain: {domain}"
+    if available_metrics:
+        user_prompt += f"\nAvailable metrics (use ONLY these names): {', '.join(available_metrics)}"
+
     try:
-        # Import LLM client
-        import openai
-        client = openai.OpenAI()
-        
-        # Build the prompt
-        system_prompt = """You are an objective formalization expert. Given a user's question about optimization or simulation, extract:
-1. The objective metrics to optimize (with direction: minimize or maximize)
-2. Constraints (budget, time, risk, etc.)
-3. Time horizon if mentioned
-4. Context tags relevant to the domain
-5. Success criteria
-
-Output JSON matching this schema:
-{
-    "metrics": [{"name": "metric_name", "direction": "maximize|minimize", "weight": 0.0-1.0}],
-    "primary_direction": "maximize|minimize",
-    "constraints": [{"name": "constraint_name", "constraint_type": "min|max|eq", "value": null, "is_hard": false}],
-    "horizon": "time period or null",
-    "context_tags": ["tag1", "tag2"],
-    "success_criteria": ["criterion1"],
-    "domain_hints": ["likely_domain_pack"]
-}"""
-
-        user_prompt = f"Question: {question}"
-        if domain_pack:
-            user_prompt += f"\nDomain pack hint: {domain_pack}"
-        if available_metrics:
-            user_prompt += f"\nAvailable metrics: {', '.join(available_metrics)}"
-        
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            response_format={"type": "json_object"},
-            max_tokens=1000,
+        result = llm.complete_json(
+            system=system_prompt,
+            user=user_prompt,
+            tier=llm.LLMTier.FAST,
             temperature=0.1,
+            max_tokens=1200,
         )
-        
-        result = json.loads(response.choices[0].message.content)
-        
-        # Parse into FormalizedObjective
-        metrics = [
-            ObjectiveMetric(**m) for m in result.get("metrics", [])
-        ]
-        constraints = [
-            Constraint(**c) for c in result.get("constraints", [])
-        ]
-        
-        domain = detect_domain(question, domain_pack)
-        action_ranges = DOMAIN_ACTION_RANGES.get(domain, {})
-        
-        return FormalizedObjective(
-            description=question,
-            metrics=metrics,
-            primary_direction=result.get("primary_direction", "maximize"),
-            constraints=constraints,
-            horizon=result.get("horizon"),
-            context_tags=result.get("context_tags", []),
-            success_criteria=result.get("success_criteria", []),
-            required_outputs=["ranked_scenarios", "metric_results"],
-            domain_hints=result.get("domain_hints", [domain]),
-            action_ranges=action_ranges,
-            initial_state={},
-        )
-        
-    except Exception as e:
-        logger.warning(f"LLM formalization failed: {e}")
+    except llm.LLMError as exc:
+        logger.warning("LLM formalization unavailable (%s); using heuristics", type(exc).__name__)
         return None
+
+    metrics: List[ObjectiveMetric] = []
+    for raw in result.get("metrics", []) or []:
+        metric = _coerce_metric(raw, available_metrics)
+        if metric is not None:
+            metrics.append(metric)
+
+    # If grounding filtered everything out, the LLM output is not usable — fall back.
+    if not metrics:
+        logger.info("LLM produced no valid grounded metrics; using heuristics")
+        return None
+
+    constraints: List[Constraint] = []
+    for raw in result.get("constraints", []) or []:
+        if not isinstance(raw, dict) or not raw.get("name"):
+            continue
+        try:
+            constraints.append(Constraint(**{k: raw[k] for k in raw if k in Constraint.model_fields}))
+        except Exception:  # noqa: BLE001
+            continue
+
+    primary_direction = str(result.get("primary_direction", "maximize")).lower()
+    if primary_direction not in {"minimize", "maximize"}:
+        primary_direction = "maximize"
+
+    defaults = _pack_defaults(domain, DOMAIN_ACTION_RANGES.get(domain, {}))
+
+    return FormalizedObjective(
+        description=question,
+        metrics=metrics,
+        primary_direction=primary_direction,
+        constraints=constraints,
+        horizon=result.get("horizon"),
+        context_tags=[str(t) for t in (result.get("context_tags") or [])][:5] or [domain],
+        success_criteria=[str(s) for s in (result.get("success_criteria") or [])] or
+        [f"Achieve {primary_direction}d objective metrics"],
+        required_outputs=["ranked_scenarios", "metric_results", "uncertainty"],
+        domain_hints=[domain],
+        action_ranges=defaults["action_ranges"],
+        initial_state=defaults["initial_state"],
+    )
 
 
 def formalize_objective(

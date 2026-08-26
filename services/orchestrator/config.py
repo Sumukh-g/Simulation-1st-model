@@ -1,12 +1,11 @@
 """Orchestrator Configuration."""
-from pydantic import ConfigDict
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Orchestrator settings."""
-    
-    model_config = ConfigDict(extra="ignore")
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     
     # Temporal
     TEMPORAL_HOST: str = "localhost:7233"
@@ -19,8 +18,8 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
     
-    # Ray
-    RAY_ADDRESS: str = "ray://localhost:10001"
+    # Ray — local by default for demos; set ray://host:10001 for a cluster
+    RAY_ADDRESS: str = "local"
     
     # Logging
     LOG_LEVEL: str = "INFO"

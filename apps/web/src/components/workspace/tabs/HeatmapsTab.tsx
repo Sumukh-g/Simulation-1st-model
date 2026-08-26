@@ -3,7 +3,7 @@
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/store';
 import type { HeatmapMask } from '@/types';
-import { Download, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 type ViewMode = 'baseline' | 'scenario' | 'delta';
@@ -30,12 +30,10 @@ export function HeatmapsTab() {
     heatmapMasks,
     toggleHeatmapMask,
     setHeatmapMaskValue,
-    selectedScenario,
   } = useAppStore();
 
   const [viewMode, setViewMode] = useState<ViewMode>('delta');
   const [showAllCells, setShowAllCells] = useState(false);
-  const [loading, setLoading] = useState(false);
 
   // Get the active layer based on view mode
   const activeLayer = useMemo(() => {
@@ -106,16 +104,6 @@ export function HeatmapsTab() {
     }
   };
 
-  const handleFetchFullRes = async () => {
-    setLoading(true);
-    try {
-      // Would fetch full resolution here
-      await new Promise(r => setTimeout(r, 1000));
-    } finally {
-      setLoading(false);
-    }
-  };
-
   if (!baselineHeatmap && !scenarioHeatmap) {
     return (
       <div className="flex-1 flex items-center justify-center text-gray-500">
@@ -162,18 +150,6 @@ export function HeatmapsTab() {
             >
               {showAllCells ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               {showAllCells ? 'Apply Masks' : 'Show All'}
-            </button>
-            <button
-              onClick={handleFetchFullRes}
-              disabled={loading}
-              className="btn-secondary gap-2"
-            >
-              <RefreshCw className={cn('w-4 h-4', loading && 'animate-spin')} />
-              Full Resolution
-            </button>
-            <button className="btn-secondary gap-2">
-              <Download className="w-4 h-4" />
-              Export
             </button>
           </div>
         </div>

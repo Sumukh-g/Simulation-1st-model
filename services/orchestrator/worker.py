@@ -5,6 +5,8 @@ import logging
 from temporalio.client import Client
 from temporalio.worker import Worker
 
+from services.common import llm
+
 from .config import settings
 from .workflows import SimulationRunWorkflow, OptimizationLoopWorkflow
 from .activities import (
@@ -28,6 +30,7 @@ from .activities import (
     update_run_status,
     record_run_stage,
     update_run_spec,
+    persist_run_progress,
     persist_scenarios_and_instances,
     fetch_cached_outcomes,
     persist_metric_results,
@@ -46,6 +49,14 @@ logger = logging.getLogger(__name__)
 
 async def main():
     """Run the Temporal worker."""
+    # Warm the LLM circuit breaker so the first run never stalls on a dead
+    # provider. Runs in a thread to avoid blocking the event loop.
+    try:
+        status = await asyncio.to_thread(llm.preflight)
+        logger.info("LLM providers: %s", status)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("LLM preflight skipped: %s", exc)
+
     logger.info(f"Connecting to Temporal at {settings.TEMPORAL_HOST}")
     
     client = await Client.connect(settings.TEMPORAL_HOST)
@@ -80,6 +91,7 @@ async def main():
             update_run_status,
             record_run_stage,
             update_run_spec,
+            persist_run_progress,
             persist_scenarios_and_instances,
             fetch_cached_outcomes,
             persist_metric_results,

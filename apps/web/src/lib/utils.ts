@@ -58,6 +58,8 @@ export function getStatusColor(status: string): string {
       return 'text-green-600';
     case 'failed':
       return 'text-red-600';
+    case 'awaiting_input':
+      return 'text-amber-600';
     default:
       return 'text-gray-600';
   }

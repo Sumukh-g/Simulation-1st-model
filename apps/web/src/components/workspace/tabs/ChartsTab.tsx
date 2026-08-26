@@ -2,7 +2,7 @@
 
 import { cn, formatNumber } from '@/lib/utils';
 import { useAppStore } from '@/store';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Area,
     AreaChart,
@@ -36,10 +36,12 @@ export function ChartsTab() {
     return Array.from(names);
   }, [candidates]);
 
-  // Set default metric
-  if (!selectedMetric && metricNames.length > 0) {
-    setSelectedMetric(metricNames[0]);
-  }
+  // Set default metric once candidates arrive (never during render).
+  useEffect(() => {
+    if (!selectedMetric && metricNames.length > 0) {
+      setSelectedMetric(metricNames[0]);
+    }
+  }, [selectedMetric, metricNames]);
 
   // Time series data (simulated for now)
   const timeSeriesData = useMemo(() => {

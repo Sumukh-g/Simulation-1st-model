@@ -2,7 +2,7 @@
 import math
 import time
 from datetime import datetime
-from typing import Dict, List, Type
+from typing import Dict, List, Optional, Type
 
 import numpy as np
 from pydantic import BaseModel, Field, field_validator
@@ -128,7 +128,7 @@ class FinancePack(DomainPackBase):
         run_id: str,
     ) -> OutcomeBundle:
         """Run portfolio backtest simulation."""
-        start_time = time.time()
+        start_time = time.perf_counter()
         
         # Determine simulation periods based on fidelity
         periods_config = {
@@ -179,7 +179,7 @@ class FinancePack(DomainPackBase):
         values_array = np.array(values)
         returns_array = np.diff(values_array) / values_array[:-1]
         
-        execution_time = (time.time() - start_time) * 1000
+        execution_time = max((time.perf_counter() - start_time) * 1000, 0.001)
         
         return OutcomeBundle(
             scenario_id=scenario_id,
@@ -205,7 +205,7 @@ class FinancePack(DomainPackBase):
     def score(
         self,
         outcome: OutcomeBundle,
-        objectives: ObjectiveSpec,
+        objectives: Optional[ObjectiveSpec] = None,
     ) -> MetricBundle:
         """Compute financial metrics."""
         returns = outcome.raw_output.get("returns_array", [])

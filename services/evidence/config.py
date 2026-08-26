@@ -1,9 +1,11 @@
 """Evidence Service Configuration."""
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Evidence service settings."""
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
     
     # Milvus
     MILVUS_HOST: str = "localhost"
@@ -26,9 +28,6 @@ class Settings(BaseSettings):
     
     # Logging
     LOG_LEVEL: str = "INFO"
-    
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings()

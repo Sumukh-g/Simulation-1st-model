@@ -184,6 +184,26 @@ class Run(UUIDMixin, TimestampMixin, Base):
         )
         return result.scalars().first()
 
+    @classmethod
+    async def list_for_org(
+        cls,
+        session: AsyncSession,
+        org_id: uuid.UUID,
+        *,
+        project_id: uuid.UUID | None = None,
+        include_archived: bool = False,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> list[Run]:
+        q = select(cls).where(cls.org_id == org_id)
+        if project_id is not None:
+            q = q.where(cls.project_id == project_id)
+        if not include_archived:
+            q = q.where(cls.status != "archived")
+        q = q.order_by(cls.created_at.desc()).limit(limit).offset(offset)
+        result = await session.execute(q)
+        return list(result.scalars().all())
+
 
 class RunStage(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "run_stages"
@@ -475,6 +495,12 @@ class DomainPack(UUIDMixin, TimestampMixin, Base):
 
     name: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     description: Mapped[str | None] = mapped_column(Text)
+
+    @classmethod
+    async def get_by_name(cls, session: AsyncSession, name: str) -> DomainPack | None:
+        """Look up a domain pack by registry name (e.g. toy-pack)."""
+        result = await session.execute(select(cls).where(cls.name == name))
+        return result.scalars().first()
 
 
 class DomainPackVersion(UUIDMixin, TimestampMixin, Base):

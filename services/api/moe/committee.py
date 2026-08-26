@@ -52,7 +52,14 @@ class MoECommittee:
         )
         expert_input = ExpertInput(
             task=task.task,
-            context=task.context,
+            # Surface routing decisions so experts can choose single-model vs
+            # multi-model ensemble reasoning and the appropriate tier.
+            context={
+                **task.context,
+                "use_ensemble": routing.use_ensemble,
+                "stakes": task.stakes,
+                "model_tier": routing.model_tier.value,
+            },
             evidence_refs=task.evidence_refs,
             constraints=task.constraints,
             simulation_results={"results": task.simulation_results}

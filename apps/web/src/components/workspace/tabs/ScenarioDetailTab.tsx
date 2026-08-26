@@ -4,13 +4,11 @@ import { cn, formatNumber, formatPercentage, getGradeColor } from '@/lib/utils';
 import { useAppStore } from '@/store';
 import {
     AlertTriangle,
-    ArrowUpCircle,
     CheckCircle,
     ChevronDown,
     ChevronRight,
     Download,
-    ExternalLink,
-    RefreshCw,
+    MinusCircle,
     XCircle
 } from 'lucide-react';
 import { useState } from 'react';
@@ -32,6 +30,20 @@ export function ScenarioDetailTab() {
 
   const scenario = selectedScenario;
 
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(scenario, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `scenario-${scenario.id}.json`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-4">
       {/* Header */}
@@ -41,19 +53,9 @@ export function ScenarioDetailTab() {
           <p className="text-sm text-gray-500">Run: {scenario.run_id}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="btn-secondary gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Replay Scenario
-          </button>
-          {scenario.fidelity !== 'high' && (
-            <button className="btn-secondary gap-2">
-              <ArrowUpCircle className="w-4 h-4" />
-              Promote to High Fidelity
-            </button>
-          )}
-          <button className="btn-primary gap-2">
+          <button onClick={handleExport} className="btn-primary gap-2">
             <Download className="w-4 h-4" />
-            Export Report
+            Export JSON
           </button>
         </div>
       </div>
@@ -227,19 +229,20 @@ export function ScenarioDetailTab() {
             {benchmarks.map((benchmark) => (
               <div 
                 key={benchmark.id}
-                className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg cursor-pointer"
+                className="flex items-center justify-between p-2 rounded-lg"
               >
                 <div className="flex items-center gap-2">
-                  {benchmark.passed ? (
+                  {benchmark.passed === true ? (
                     <CheckCircle className="w-4 h-4 text-green-500" />
-                  ) : (
+                  ) : benchmark.passed === false ? (
                     <XCircle className="w-4 h-4 text-red-500" />
+                  ) : (
+                    <MinusCircle className="w-4 h-4 text-gray-400" />
                   )}
                   <span className="text-sm font-medium">{benchmark.name}</span>
                 </div>
                 <div className="flex items-center gap-3 text-sm text-gray-500">
                   <span>{benchmark.metric_name} {benchmark.threshold_type} {benchmark.threshold_value}</span>
-                  <ExternalLink className="w-3 h-3" />
                 </div>
               </div>
             ))}

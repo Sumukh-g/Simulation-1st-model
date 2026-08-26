@@ -240,6 +240,14 @@ async def main():
             defaults={"role_id": admin_role.id},
         )
 
+        project, _ = await get_or_create(
+            session,
+            models.Project,
+            org_id=org.id,
+            name="Demo Project",
+            defaults={"description": "Default project for local GSIP demos"},
+        )
+
         packs_created = await load_domain_packs(session, admin_user.id)
         domain_pack_map = {}
         result = await session.execute(select(models.DomainPack))
@@ -255,8 +263,13 @@ async def main():
     print("=" * 50)
     print(
         "Loaded: "
-        f"{packs_created} domain packs, {rubrics_created} rubrics, {benchmarks_created} benchmarks"
+        f"{packs_created} domain packs, {rubrics_created} rubrics, "
+        f"{benchmarks_created} benchmarks, project={project.name}"
     )
+    print(f"Demo X-User-Id: {admin_user.id}")
+    print(f"Demo X-Org-Id:  {org.id}")
+    print(f"Demo project:   {project.id}")
+    print("Pack names:     toy-pack | finance-pack | spatial-pack")
     print("=" * 50)
 
 

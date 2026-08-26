@@ -27,10 +27,30 @@ logger = logging.getLogger(__name__)
 
 
 def init_ray() -> None:
-    """Initialize Ray connection."""
-    if not ray.is_initialized():
-        ray.init(address=settings.RAY_ADDRESS, ignore_reinit_error=True)
-        logger.info(f"Connected to Ray cluster at {settings.RAY_ADDRESS}")
+    """Initialize Ray connection (cluster address or local process)."""
+    if ray.is_initialized():
+        return
+    address = (settings.RAY_ADDRESS or "local").strip().lower()
+    # Windows / low-RAM hosts often fail Ray's default object-store sizing.
+    object_store_memory = 100 * 1024 * 1024  # 100 MiB floor
+    common = dict(
+        ignore_reinit_error=True,
+        num_cpus=max(1, min(settings.RAY_NUM_CPUS, 2)),
+        object_store_memory=object_store_memory,
+        include_dashboard=False,
+    )
+    if address in ("", "local", "auto", "none"):
+        ray.init(**common)
+        logger.info("Started local Ray runtime (object_store=%s)", object_store_memory)
+    else:
+        try:
+            ray.init(address=settings.RAY_ADDRESS, ignore_reinit_error=True)
+            logger.info(f"Connected to Ray cluster at {settings.RAY_ADDRESS}")
+        except Exception as exc:
+            logger.warning(
+                "Ray cluster unavailable (%s); falling back to local Ray", exc
+            )
+            ray.init(**common)
 
 
 @ray.remote
@@ -63,8 +83,9 @@ class SimulationWorker:
         )
 
     def _load_pack(self) -> None:
-        """Load the domain pack."""
+        """Load the domain pack (ensure packs are registered first)."""
         try:
+            import compute.domain_packs  # noqa: F401 — registers Toy/Finance/Spatial
             from compute.domain_packs.sdk import DomainPackRegistry
 
             self.pack = DomainPackRegistry.create_instance(self.name, self.version)
@@ -216,10 +237,16 @@ class SimulationWorker:
                 scenario_id=scenario_id,
                 run_id=run_id,
             )
+            scored = self.pack.score(outcome)
+            outcome_dict = outcome.model_dump()
+            outcome_dict["metrics"] = [
+                m.model_dump() if hasattr(m, "model_dump") else m
+                for m in scored.metrics
+            ]
 
             return {
                 "status": "completed",
-                "outcome": outcome.model_dump(),
+                "outcome": outcome_dict,
                 "scenario_id": scenario_id,
                 "run_id": run_id,
                 "state": state,

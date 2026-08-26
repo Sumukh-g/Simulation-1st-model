@@ -28,6 +28,7 @@ with workflow.unsafe.imports_passed_through():
         update_run_status,
         record_run_stage,
         update_run_spec,
+        persist_run_progress,
         persist_scenarios_and_instances,
         fetch_cached_outcomes,
         persist_metric_results,
@@ -50,6 +51,30 @@ class SimulationRunWorkflow:
         self.best_score = None
         self.stop_reason = None
 
+    async def _set_status(self, run_id: str, status: str) -> None:
+        await workflow.execute_activity(
+            update_run_status,
+            args=[run_id, status],
+            start_to_close_timeout=timedelta(seconds=60),
+            retry_policy=RetryPolicy(maximum_attempts=3),
+        )
+
+    async def _stage(self, run_id: str, stage: str, status: str) -> None:
+        await workflow.execute_activity(
+            record_run_stage,
+            args=[run_id, stage, status],
+            start_to_close_timeout=timedelta(seconds=60),
+            retry_policy=RetryPolicy(maximum_attempts=3),
+        )
+
+    async def _save_spec(self, run_id: str, run_spec: Dict[str, Any]) -> None:
+        await workflow.execute_activity(
+            update_run_spec,
+            args=[run_id, run_spec],
+            start_to_close_timeout=timedelta(seconds=60),
+            retry_policy=RetryPolicy(maximum_attempts=3),
+        )
+
     @workflow.run
     async def run(self, run_spec: Dict[str, Any]) -> Dict[str, Any]:
         # Extract run_id - handle both dict and string cases for backwards compatibility
@@ -62,10 +87,10 @@ class SimulationRunWorkflow:
                 raise ValueError("run_spec must contain 'run_id'")
         
         start_time = workflow.now()
-        await update_run_status(run_id, "running")
+        await self._set_status(run_id, "running")
 
         # Step 1: Formalize objective/constraints/context
-        await record_run_stage(run_id, "formalize_objectives", "started")
+        await self._stage(run_id, "formalize", "started")
         formalized = await workflow.execute_activity(
             formalize_objectives,
             args=[run_spec],
@@ -73,11 +98,11 @@ class SimulationRunWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
         run_spec.update(formalized)
-        await update_run_spec(run_id, run_spec)
-        await record_run_stage(run_id, "formalize_objectives", "completed")
+        await self._save_spec(run_id, run_spec)
+        await self._stage(run_id, "formalize", "completed")
 
         # Step 2: Evidence pack + benchmark selection
-        await record_run_stage(run_id, "evidence_pack", "started")
+        await self._stage(run_id, "evidence", "started")
         evidence_request = await workflow.execute_activity(
             build_evidence_pack,
             args=[run_spec],
@@ -102,21 +127,21 @@ class SimulationRunWorkflow:
             start_to_close_timeout=timedelta(minutes=2),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
-        await update_run_spec(run_id, run_spec)
-        await record_run_stage(run_id, "evidence_pack", "completed")
+        await self._save_spec(run_id, run_spec)
+        await self._stage(run_id, "evidence", "completed")
 
         # Step 3: Cause/levers modeling
-        await record_run_stage(run_id, "cause_modeling", "started")
+        await self._stage(run_id, "cause_modeling", "started")
         cause_model = await workflow.execute_activity(
             model_causes,
             args=[run_spec],
             start_to_close_timeout=timedelta(minutes=5),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
-        await record_run_stage(run_id, "cause_modeling", "completed")
+        await self._stage(run_id, "cause_modeling", "completed")
 
         # Step 4: Scenario generation (structured)
-        await record_run_stage(run_id, "scenario_generation", "started")
+        await self._stage(run_id, "scenarios", "started")
         scenarios = await workflow.execute_activity(
             generate_structured_scenarios,
             args=[run_spec],
@@ -130,10 +155,11 @@ class SimulationRunWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
         self.total_scenarios = len(scenarios)
-        await record_run_stage(run_id, "scenario_generation", "completed")
+        await self._stage(run_id, "scenarios", "completed")
 
         # Step 5: Optimize loop (cheap fidelity)
-        await record_run_stage(run_id, "optimization_loop", "started")
+        await self._stage(run_id, "simulation", "started")
+        await self._stage(run_id, "optimize", "started")
         optimizer_state = await workflow.execute_activity(
             initialize_optimizer,
             args=[run_spec],
@@ -141,14 +167,28 @@ class SimulationRunWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
 
-        cost_limits = run_spec.get("cost_limits", {})
-        max_scenarios = int(cost_limits.get("max_scenarios", run_spec.get("budget", 1000)))
-        max_wall_time = int(cost_limits.get("max_wall_time_seconds", 6 * 3600))
+        cost_limits = run_spec.get("cost_limits") or {}
+        cost_gov = run_spec.get("cost_governance") or {}
+        max_scenarios = int(
+            cost_limits.get(
+                "max_scenarios",
+                cost_gov.get("max_scenarios", run_spec.get("budget", 1000)),
+            )
+        )
+        max_wall_time = int(
+            cost_limits.get(
+                "max_wall_time_seconds",
+                cost_gov.get("max_wall_time", 6 * 3600),
+            )
+        )
         max_compute_time = int(cost_limits.get("max_compute_time_seconds", 8 * 3600))
         max_storage = int(cost_limits.get("max_storage_bytes", 5_000_000_000))
 
         compute_time = 0.0
         storage_bytes = 0
+        cache_hits = 0
+        promoted_count = 0
+        objectives = run_spec.get("objectives")
         all_scored: List[Dict[str, Any]] = []
 
         batch_size = run_spec.get("batch_size", 20)
@@ -194,11 +234,16 @@ class SimulationRunWorkflow:
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
 
+            cache_hits += len(cached)
             outcomes: List[Dict[str, Any]] = list(cached)
             if pending:
                 new_outcomes = await workflow.execute_activity(
                     execute_simulation_batch,
-                    args=[run_spec["domain_pack_id"], run_spec["domain_pack_version"], pending],
+                    args=[
+                        run_spec.get("domain_pack") or run_spec["domain_pack_id"],
+                        run_spec["domain_pack_version"],
+                        pending,
+                    ],
                     start_to_close_timeout=timedelta(minutes=30),
                     retry_policy=RetryPolicy(maximum_attempts=3),
                 )
@@ -224,6 +269,7 @@ class SimulationRunWorkflow:
                     run_spec.get("rubric_version_id"),
                     run_spec.get("rubric_id"),
                     benchmarks,
+                    objectives,
                 ],
                 start_to_close_timeout=timedelta(minutes=10),
                 retry_policy=RetryPolicy(maximum_attempts=3),
@@ -265,16 +311,20 @@ class SimulationRunWorkflow:
             converged = convergence.get("converged", False)
             self.completed_scenarios += len(batch)
 
-        await record_run_stage(run_id, "optimization_loop", "completed")
+        await self._stage(run_id, "optimize", "completed")
+        await self._stage(run_id, "simulation", "completed")
         if converged and not self.stop_reason:
             self.stop_reason = convergence.get("reason", "converged")
         if iteration >= max_iterations and not self.stop_reason:
             self.stop_reason = "max_iterations"
 
-        # Step 6: Promote finalists to mid/high fidelity + replicates
+        # Step 6: Promote finalists to mid/high fidelity + replicates.
+        # Finalization runs whenever we have finalists; the loop always stops
+        # with a stop_reason, so gating on "not stop_reason" would skip it.
         finalists = self._select_top_scenarios(all_scored, run_spec.get("finalist_count", 5))
-        if not self.stop_reason:
-            await record_run_stage(run_id, "promote_finalists", "started")
+        promoted_count = len(finalists)
+        if finalists:
+            await self._stage(run_id, "promote_finalists", "started")
             mid = await workflow.execute_activity(
                 promote_finalists,
                 args=[finalists, "mid", run_spec.get("replicates", 3)],
@@ -305,7 +355,7 @@ class SimulationRunWorkflow:
                 new_outcomes = await workflow.execute_activity(
                     execute_simulation_batch,
                     args=[
-                        run_spec["domain_pack_id"],
+                        run_spec.get("domain_pack") or run_spec["domain_pack_id"],
                         run_spec["domain_pack_version"],
                         pending_promoted,
                     ],
@@ -330,6 +380,7 @@ class SimulationRunWorkflow:
                     run_spec.get("rubric_version_id"),
                     run_spec.get("rubric_id"),
                     benchmarks,
+                    objectives,
                 ],
                 start_to_close_timeout=timedelta(minutes=10),
                 retry_policy=RetryPolicy(maximum_attempts=3),
@@ -341,11 +392,11 @@ class SimulationRunWorkflow:
                 start_to_close_timeout=timedelta(minutes=5),
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
-            await record_run_stage(run_id, "promote_finalists", "completed")
+            await self._stage(run_id, "promote_finalists", "completed")
 
         # Step 7: Robustness tests
-        if not self.stop_reason:
-            await record_run_stage(run_id, "robustness_tests", "started")
+        if finalists:
+            await self._stage(run_id, "robustness", "started")
             robustness = await workflow.execute_activity(
                 generate_robustness_scenarios,
                 args=[finalists, run_spec.get("action_ranges", {})],
@@ -369,7 +420,7 @@ class SimulationRunWorkflow:
                 new_outcomes = await workflow.execute_activity(
                     execute_simulation_batch,
                     args=[
-                        run_spec["domain_pack_id"],
+                        run_spec.get("domain_pack") or run_spec["domain_pack_id"],
                         run_spec["domain_pack_version"],
                         pending_robustness,
                     ],
@@ -396,6 +447,7 @@ class SimulationRunWorkflow:
                     run_spec.get("rubric_version_id"),
                     run_spec.get("rubric_id"),
                     benchmarks,
+                    objectives,
                 ],
                 start_to_close_timeout=timedelta(minutes=10),
                 retry_policy=RetryPolicy(maximum_attempts=3),
@@ -407,10 +459,10 @@ class SimulationRunWorkflow:
                 start_to_close_timeout=timedelta(minutes=5),
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
-            await record_run_stage(run_id, "robustness_tests", "completed")
+            await self._stage(run_id, "robustness", "completed")
 
         # Step 8: Deterministic scoring aggregation
-        await record_run_stage(run_id, "judge_scoring", "started")
+        await self._stage(run_id, "judge", "started")
         summary = await workflow.execute_activity(
             aggregate_results,
             args=[run_id, all_scored, run_spec.get("objectives")],
@@ -418,10 +470,33 @@ class SimulationRunWorkflow:
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
         self.best_score = summary.get("best_score")
-        await record_run_stage(run_id, "judge_scoring", "completed")
+
+        # Surface counters, ranked candidates and current_best into run_spec so
+        # the API/UI actually show results for a completed run.
+        await workflow.execute_activity(
+            persist_run_progress,
+            args=[
+                run_id,
+                all_scored,
+                summary,
+                {
+                    "scenarios_proposed": self.total_scenarios + self.completed_scenarios,
+                    "scenarios_promoted": promoted_count,
+                    "cache_hits": cache_hits,
+                    "compute_cost": compute_time,
+                    "storage_cost": float(storage_bytes),
+                    "budget_consumed": self.completed_scenarios,
+                    "budget_total": max_scenarios,
+                },
+                objectives,
+            ],
+            start_to_close_timeout=timedelta(minutes=3),
+            retry_policy=RetryPolicy(maximum_attempts=3),
+        )
+        await self._stage(run_id, "judge", "completed")
 
         # Step 9: Report assembly and artifact
-        await record_run_stage(run_id, "report_assembly", "started")
+        await self._stage(run_id, "report", "started")
         report_payload = {
             "run_id": run_id,
             "evidence_pack_id": run_spec.get("evidence_pack_id"),
@@ -436,7 +511,7 @@ class SimulationRunWorkflow:
             start_to_close_timeout=timedelta(minutes=2),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
-        await record_run_stage(run_id, "report_assembly", "completed")
+        await self._stage(run_id, "report", "completed")
 
         await workflow.execute_activity(
             seal_run,
@@ -444,7 +519,7 @@ class SimulationRunWorkflow:
             start_to_close_timeout=timedelta(minutes=1),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
-        await update_run_status(run_id, "completed")
+        await self._set_status(run_id, "completed")
         self.status = "completed"
 
         return {

@@ -77,7 +77,7 @@ class OptimizationLoopWorkflow:
             outcomes = await workflow.execute_activity(
                 execute_simulation_batch,
                 args=[
-                    run_spec["domain_pack_id"],
+                    run_spec.get("domain_pack") or run_spec["domain_pack_id"],
                     run_spec["domain_pack_version"],
                     scenarios,
                 ],

@@ -8,6 +8,17 @@ from typing import Any, Dict, List
 from temporalio import activity
 
 
+def _sample_bound(bounds: Dict[str, Any], rng: random.Random, value: float | None = None) -> Any:
+    """Sample or coerce a value into the correct int/float type for a bound."""
+    lo, hi = bounds["min"], bounds["max"]
+    as_int = bounds.get("type") == "int" or bounds.get("dtype") == "int"
+    if value is None:
+        value = rng.randint(int(lo), int(hi)) if as_int else rng.uniform(float(lo), float(hi))
+    else:
+        value = max(lo, min(hi, value))
+    return int(round(value)) if as_int else float(value)
+
+
 @activity.defn
 async def initialize_optimizer(run_spec: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -25,6 +36,7 @@ async def initialize_optimizer(run_spec: Dict[str, Any]) -> Dict[str, Any]:
         "optimizer_type": optimizer_type,
         "objectives": objectives,
         "action_ranges": action_ranges,
+        "initial_state": run_spec.get("initial_state", {}),
         "iteration": 0,
         "best_score": None,
         "best_params": None,
@@ -61,18 +73,16 @@ async def propose_next_batch(
         actions = {}
         for param, bounds in action_ranges.items():
             if isinstance(bounds, dict) and "min" in bounds and "max" in bounds:
-                # Add some exploration-exploitation balance
                 if history and rng.random() > 0.3:
-                    # Exploit: perturb best known point
                     best = optimizer_state.get("best_params", {})
                     if param in best:
-                        noise = rng.gauss(0, (bounds["max"] - bounds["min"]) * 0.1)
-                        actions[param] = max(bounds["min"], min(bounds["max"], best[param] + noise))
+                        span = (bounds["max"] - bounds["min"]) * 0.1
+                        noise = rng.gauss(0, span if span else 1)
+                        actions[param] = _sample_bound(bounds, rng, best[param] + noise)
                     else:
-                        actions[param] = rng.uniform(bounds["min"], bounds["max"])
+                        actions[param] = _sample_bound(bounds, rng)
                 else:
-                    # Explore: random sample
-                    actions[param] = rng.uniform(bounds["min"], bounds["max"])
+                    actions[param] = _sample_bound(bounds, rng)
             else:
                 actions[param] = bounds
         

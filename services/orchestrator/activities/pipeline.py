@@ -1,6 +1,7 @@
 """Pipeline activities for run orchestration."""
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -13,6 +14,14 @@ from services.api.moe import MoECommittee, MoETask, TaskStage
 from .formalizer import formalize_objective
 
 logger = logging.getLogger(__name__)
+
+
+def _coerce_action_value(bounds: Dict[str, Any], value: float) -> Any:
+    """Keep integer action parameters as ints when bounds declare type=int or both ends are ints with type hint."""
+    lo, hi = bounds["min"], bounds["max"]
+    as_int = bounds.get("type") == "int" or bounds.get("dtype") == "int"
+    value = max(lo, min(hi, value))
+    return int(round(value)) if as_int else float(value)
 
 
 @activity.defn
@@ -34,22 +43,67 @@ async def formalize_objectives(run_spec: Dict[str, Any]) -> Dict[str, Any]:
             "objectives": {"type": "maximize", "metrics": []},
             "constraints": [],
             "context": {},
-            "action_ranges": {},
-            "initial_state": {},
+            "action_ranges": run_spec.get("action_ranges") or {},
+            "initial_state": run_spec.get("initial_state") or {},
+        }
+
+    # Ephemeral packs ship pre-built ranges/state from pack_creation.materialize_for_execution
+    if run_spec.get("ephemeral") and run_spec.get("action_ranges"):
+        objectives_list = run_spec.get("objective_spec", {}).get("objectives") or []
+        metrics = [
+            {
+                "name": o.get("name"),
+                "direction": o.get("direction", "maximize"),
+                "weight": float(o.get("weight", 1.0)),
+            }
+            for o in objectives_list
+            if isinstance(o, dict) and o.get("name")
+        ]
+        if not metrics:
+            draft = run_spec.get("ephemeral_pack_spec") or {}
+            metrics = [
+                {
+                    "name": m.get("name"),
+                    "direction": m.get("direction", "maximize"),
+                    "weight": 1.0,
+                }
+                for m in (draft.get("metrics") or [])
+                if isinstance(m, dict) and m.get("name")
+            ]
+        direction = "minimize" if any(m.get("direction") == "minimize" for m in metrics) else "maximize"
+        return {
+            "objectives": {
+                "type": direction,
+                "metrics": metrics,
+                "description": user_question,
+            },
+            "constraints": run_spec.get("objective_spec", {}).get("constraints") or [],
+            "context": {"ephemeral": True, "simulation_mode": run_spec.get("simulation_mode")},
+            "action_ranges": run_spec.get("action_ranges") or {},
+            "initial_state": run_spec.get("initial_state") or {},
         }
     
     # Get available metrics from domain pack if possible
     available_metrics = None
-    try:
-        from compute.domain_packs.sdk import DomainPackRegistry
-        pack = DomainPackRegistry.create_instance(domain_pack)
-        if pack:
-            available_metrics = pack.get_metrics_list()
-    except Exception as e:
-        logger.debug(f"Could not load domain pack metrics: {e}")
+    if run_spec.get("ephemeral"):
+        draft = run_spec.get("ephemeral_pack_spec") or run_spec.get("draft_pack") or {}
+        available_metrics = [
+            m.get("name") for m in (draft.get("metrics") or []) if isinstance(m, dict) and m.get("name")
+        ]
+    if not available_metrics:
+        try:
+            from compute.domain_packs.sdk import DomainPackRegistry
+            pack = DomainPackRegistry.create_instance(domain_pack)
+            if pack:
+                available_metrics = pack.get_metrics_list()
+        except Exception as e:
+            logger.debug(f"Could not load domain pack metrics: {e}")
     
-    # Formalize the objective using heuristics and/or LLM
-    formalized = formalize_objective(
+    # Formalize the objective using heuristics and/or LLM. The LLM path makes a
+    # blocking network call, so run it in a worker thread to keep the Temporal
+    # activity's event loop responsive.
+    formalized = await asyncio.to_thread(
+        formalize_objective,
         question=user_question,
         domain_pack=domain_pack,
         available_metrics=available_metrics,
@@ -98,18 +152,49 @@ async def build_evidence_pack(run_spec: Dict[str, Any]) -> Dict[str, Any]:
 
 @activity.defn
 async def model_causes(run_spec: Dict[str, Any]) -> Dict[str, Any]:
-    """Run causal/levers modeling via MoE (structured)."""
+    """Run causal/levers modeling via MoE (structured, LLM-backed when available)."""
     committee = MoECommittee()
+    # MoETask.constraints is List[str]; the formalizer emits constraint dicts,
+    # so reduce them to their names before handing them to the committee.
+    raw_constraints = run_spec.get("constraints", []) or []
+    constraint_names = [
+        (c.get("name") or c.get("constraint_type") or "constraint")
+        if isinstance(c, dict)
+        else str(c)
+        for c in raw_constraints
+    ]
+
+    objectives = run_spec.get("objectives", {}) or {}
+    question = (
+        objectives.get("description")
+        or run_spec.get("objective_spec", {}).get("description")
+        or "the objective"
+    )
+    metric_names = [m.get("name") for m in objectives.get("metrics", []) if isinstance(m, dict)]
+
+    # Provide the actual goal + metrics + domain so the LLM reasons about THIS run.
+    context = {
+        **(run_spec.get("context", {}) or {}),
+        "domain_pack": run_spec.get("domain_pack", ""),
+        "objective_direction": objectives.get("type", "optimize"),
+        "objective_metrics": metric_names,
+        "action_ranges": list((run_spec.get("action_ranges") or {}).keys()),
+    }
+
     task = MoETask(
-        task="Model causes and decision levers",
+        task=f"Identify the key decision levers and causal drivers for: {question}",
         stage=TaskStage.CAUSE_MODELING,
-        stakes=run_spec.get("stakes", 0.5),
-        context=run_spec.get("context", {}),
+        stakes=float(run_spec.get("stakes", 0.5) or 0.5),
+        context=context,
         evidence_refs=run_spec.get("evidence_refs", []),
-        constraints=run_spec.get("constraints", []),
+        constraints=constraint_names,
     )
     report = await committee.run(task)
-    return report.arbitration.model_dump()
+    result = report.arbitration.model_dump()
+    # Attach the structured expert outputs so the report/UI can show the reasoning.
+    result["expert_outputs"] = [eo.model_dump() for eo in report.expert_outputs]
+    result["escalation"] = report.escalation
+    return result
 
 
 @activity.defn
@@ -236,7 +321,7 @@ def _generate_grid_scenarios(
     selected_combos = all_combos[:count]
     
     for combo in selected_combos:
-        actions = {params[i][0]: combo[i] for i in range(len(params))}
+        actions = {params[i][0]: _coerce_action_value(params[i][1], combo[i]) for i in range(len(params))}
         
         # Add non-range parameters
         for k, v in action_ranges.items():
@@ -303,7 +388,9 @@ def _generate_lhs_scenarios(
         actions = {}
         for j, (param, bounds) in enumerate(params):
             min_val, max_val = bounds["min"], bounds["max"]
-            actions[param] = min_val + samples[j][i] * (max_val - min_val)
+            actions[param] = _coerce_action_value(
+                bounds, min_val + samples[j][i] * (max_val - min_val)
+            )
         
         # Add non-range parameters
         for k, v in action_ranges.items():
@@ -349,7 +436,10 @@ def _generate_random_scenarios(
         actions = {}
         for param, bounds in action_ranges.items():
             if isinstance(bounds, dict) and "min" in bounds and "max" in bounds:
-                actions[param] = rng.uniform(bounds["min"], bounds["max"])
+                lo, hi = bounds["min"], bounds["max"]
+                as_int = bounds.get("type") == "int" or bounds.get("dtype") == "int"
+                raw = rng.randint(int(lo), int(hi)) if as_int else rng.uniform(float(lo), float(hi))
+                actions[param] = _coerce_action_value(bounds, raw)
             elif isinstance(bounds, list):
                 actions[param] = rng.choice(bounds)
             else:
@@ -405,11 +495,11 @@ def _generate_boundary_scenarios(
             # Alternate between min, max, and mid values
             choice = i % 3
             if choice == 0:
-                actions[param] = min_val
+                actions[param] = _coerce_action_value(bounds, min_val)
             elif choice == 1:
-                actions[param] = max_val
+                actions[param] = _coerce_action_value(bounds, max_val)
             else:
-                actions[param] = (min_val + max_val) / 2
+                actions[param] = _coerce_action_value(bounds, (min_val + max_val) / 2)
         
         # Add non-range parameters
         for k, v in action_ranges.items():

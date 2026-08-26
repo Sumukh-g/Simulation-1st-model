@@ -1,6 +1,6 @@
 """SpatialPack - Grid-based diffusion simulation with heatmap output."""
 import time
-from typing import Dict, List, Type
+from typing import Dict, List, Optional, Type
 
 import numpy as np
 from pydantic import BaseModel, Field
@@ -171,7 +171,7 @@ class SpatialPack(DomainPackBase):
         run_id: str,
     ) -> OutcomeBundle:
         """Run diffusion simulation."""
-        start_time = time.time()
+        start_time = time.perf_counter()
         
         rng = np.random.RandomState(seed)
         
@@ -241,7 +241,7 @@ class SpatialPack(DomainPackBase):
                 grid = np.repeat(np.repeat(grid, int(1/resolution_factor), axis=0), int(1/resolution_factor), axis=1)
                 grid = grid[:state.grid_size, :state.grid_size]
         
-        execution_time = (time.time() - start_time) * 1000
+        execution_time = max((time.perf_counter() - start_time) * 1000, 0.001)
         
         # Create heatmap data
         heatmap = grid.tolist()
@@ -272,7 +272,7 @@ class SpatialPack(DomainPackBase):
     def score(
         self,
         outcome: OutcomeBundle,
-        objectives: ObjectiveSpec,
+        objectives: Optional[ObjectiveSpec] = None,
     ) -> MetricBundle:
         """Compute spatial metrics."""
         grid = outcome.raw_output.get("grid")

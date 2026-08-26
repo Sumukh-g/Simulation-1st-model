@@ -3,7 +3,15 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 
 from ..config import settings
 
-engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
+# Cap the pool so a burst of SSE clients cannot exhaust Postgres
+# (default max_connections is often ~100 across the whole cluster).
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
+    pool_size=5,
+    max_overflow=10,
+    pool_recycle=300,
+)
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 
 

@@ -1,12 +1,14 @@
 """Simulation Fabric Configuration."""
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     """Simulation fabric settings."""
 
-    # Ray
-    RAY_ADDRESS: str = "ray://localhost:10001"
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    # Ray — empty / "local" / "auto" starts an in-process Ray for local demos
+    RAY_ADDRESS: str = "local"
     RAY_NUM_CPUS: int = 4
     RAY_NUM_GPUS: int = 0
 
@@ -34,9 +36,6 @@ class Settings(BaseSettings):
 
     # Logging
     LOG_LEVEL: str = "INFO"
-
-    class Config:
-        env_file = ".env"
 
 
 settings = Settings()

@@ -1,5 +1,8 @@
 // Run Status
-export type RunStatus = 'idle' | 'running' | 'completed' | 'failed';
+export type RunStatus = 'idle' | 'running' | 'completed' | 'failed' | 'awaiting_input';
+
+// How the run obtains its simulator
+export type SimulationMode = 'domain_pack' | 'create_pack' | 'no_pack';
 
 // Pipeline Stages
 export type PipelineStage = 
@@ -77,8 +80,10 @@ export interface Run {
   id: string;
   project_id: string;
   status: RunStatus;
+  title?: string;
   domain_pack: string;
   domain_pack_version: string;
+  simulation_mode?: SimulationMode;
   objective_spec: ObjectiveSpec;
   created_at: string;
   updated_at: string;
@@ -86,6 +91,51 @@ export interface Run {
   counters: RunCounters;
   current_best?: ScenarioResult;
   candidates: ScenarioResult[];
+  narrative?: RunNarrative;
+  summary?: RunSummary;
+  assistant_message?: string;
+  classification?: {
+    domain?: string;
+    problem_type?: string;
+    summary?: string;
+  };
+  candidate_methods?: Array<{
+    id?: string;
+    name?: string;
+    why_suitable?: string;
+    recommended?: boolean;
+  }>;
+  draft_pack?: Record<string, unknown>;
+  mode_status?: string;
+}
+
+/** Lightweight row for the history sidebar (from GET /api/runs). */
+export interface RunListItem {
+  id: string;
+  project_id?: string | null;
+  status: RunStatus | 'archived' | string;
+  title: string;
+  prompt_preview: string;
+  domain_pack: string;
+  simulation_mode?: SimulationMode;
+  created_at: string;
+  updated_at: string;
+}
+
+// AI-generated, results-grounded executive summary of the run.
+export interface RunNarrative {
+  text: string;
+  generated_by: string; // provider name (e.g. "groq") or "template"
+}
+
+export interface RunSummary {
+  total_scenarios?: number;
+  completed?: number;
+  failed?: number;
+  best_score?: number | null;
+  best_scenario_id?: string | null;
+  mean_score?: number | null;
+  score_std?: number | null;
 }
 
 export interface RunCounters {
@@ -146,9 +196,10 @@ export interface Benchmark {
   metric_name: string;
   threshold_value: number;
   threshold_type: 'min' | 'max' | 'target';
-  passed?: boolean;
-  credibility_weight: number;
-  context_tags: string[];
+  // null/undefined => not yet evaluated against this run's results.
+  passed?: boolean | null;
+  credibility_weight?: number;
+  context_tags?: string[];
 }
 
 // Heatmap
@@ -182,9 +233,12 @@ export interface Project {
   org_id: string;
 }
 
-// SSE Events
-export interface SSEEvent {
-  type: 'stage_update' | 'scenario_result' | 'best_changed' | 'run_completed' | 'error';
-  run_id: string;
-  data: unknown;
-}
+// SSE Events. The server sends these as *named* events (event: <type>), so the
+// client must use addEventListener(type) rather than onmessage.
+export type SSEEventType =
+  | 'stage_update'
+  | 'counters_update'
+  | 'scenario_result'
+  | 'best_changed'
+  | 'run_completed'
+  | 'error';

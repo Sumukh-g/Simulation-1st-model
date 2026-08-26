@@ -22,11 +22,12 @@ export function Header() {
   const [showPackMenu, setShowPackMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
-  const statusLabels = {
+  const statusLabels: Record<string, string> = {
     idle: 'Idle',
     running: 'Running',
     completed: 'Completed',
     failed: 'Failed',
+    awaiting_input: 'Awaiting input',
   };
 
   return (

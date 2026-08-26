@@ -17,6 +17,8 @@ asyncpg = "^0.29.0"
 alembic = "^1.13.1"
 sse-starlette = "^2.0.0"
 temporalio = "^1.4.0"
+openai = "^1.59.0"
+python-dotenv = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.2.0"

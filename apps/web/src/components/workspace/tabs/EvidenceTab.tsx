@@ -7,8 +7,8 @@ import {
     CheckCircle,
     ChevronDown,
     ChevronRight,
-    ExternalLink,
     FileText,
+    MinusCircle,
     Shield
 } from 'lucide-react';
 import { useState } from 'react';
@@ -133,10 +133,12 @@ export function EvidenceTab() {
                     className="w-full flex items-start gap-3 text-left"
                   >
                     <div className="flex-shrink-0">
-                      {benchmark.passed ? (
+                      {benchmark.passed === true ? (
                         <CheckCircle className="w-6 h-6 text-green-500" />
-                      ) : (
+                      ) : benchmark.passed === false ? (
                         <AlertTriangle className="w-6 h-6 text-red-500" />
+                      ) : (
+                        <MinusCircle className="w-6 h-6 text-gray-400" />
                       )}
                     </div>
                     
@@ -147,9 +149,17 @@ export function EvidenceTab() {
                         </span>
                         <span className={cn(
                           'badge',
-                          benchmark.passed ? 'badge-success' : 'badge-error'
+                          benchmark.passed === true
+                            ? 'badge-success'
+                            : benchmark.passed === false
+                            ? 'badge-error'
+                            : 'bg-gray-100 text-gray-600'
                         )}>
-                          {benchmark.passed ? 'PASS' : 'FAIL'}
+                          {benchmark.passed === true
+                            ? 'PASS'
+                            : benchmark.passed === false
+                            ? 'FAIL'
+                            : 'Applied'}
                         </span>
                       </div>
                       
@@ -163,14 +173,14 @@ export function EvidenceTab() {
                         <div className="mt-4 p-3 bg-gray-50 rounded-lg space-y-2">
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-500">Credibility Weight</span>
-                            <span className="font-medium">{formatNumber(benchmark.credibility_weight, 2)}</span>
+                            <span className="font-medium">{formatNumber(benchmark.credibility_weight ?? 1, 2)}</span>
                           </div>
-                          
-                          {benchmark.context_tags.length > 0 && (
+
+                          {(benchmark.context_tags?.length ?? 0) > 0 && (
                             <div className="flex items-center gap-2">
                               <span className="text-sm text-gray-500">Context:</span>
                               <div className="flex flex-wrap gap-1">
-                                {benchmark.context_tags.map((tag) => (
+                                {benchmark.context_tags!.map((tag) => (
                                   <span 
                                     key={tag}
                                     className="px-2 py-0.5 bg-gray-200 rounded text-xs text-gray-700"
@@ -181,10 +191,6 @@ export function EvidenceTab() {
                               </div>
                             </div>
                           )}
-                          
-                          <button className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700">
-                            View source <ExternalLink className="w-3 h-3" />
-                          </button>
                         </div>
                       )}
                     </div>

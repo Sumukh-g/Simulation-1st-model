@@ -12,6 +12,9 @@ services:
       POSTGRES_DB: gsip
     ports:
       - "5433:5432"
+    # Raise the client limit: SSE streams + Temporal workers + API pool can
+    # otherwise hit the default (~100) and freeze the UI with reconnect loops.
+    command: ["postgres", "-c", "max_connections=200"]
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -55,16 +58,21 @@ services:
     ports:
       - "7233:7233"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
   ray:
     image: rayproject/ray:latest
     container_name: gsip-ray
-    command: ["ray", "start", "--head", "--port=10002", "--ray-client-server-port=10001", "--dashboard-host=0.0.0.0", "--block"]
+    # Avoid colliding gcs port 10002 with the worker port range start.
+    command: ["ray", "start", "--head", "--port=6379", "--ray-client-server-port=10001", "--dashboard-host=0.0.0.0", "--block"]
     ports:
       - "10001:10001"
       - "8265:8265"
     shm_size: "2gb"
+    profiles: ["ray-cluster"]
+    # Optional: local demos use in-process Ray (RAY_ADDRESS=local).
+    # Start the cluster with: docker compose --profile ray-cluster up -d
 
   milvus:
     image: milvusdb/milvus:latest

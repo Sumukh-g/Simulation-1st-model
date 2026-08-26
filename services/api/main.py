@@ -17,10 +17,13 @@ app = FastAPI(
     version="0.1.0",
 )
 
+# A wildcard origin cannot be combined with credentials (browsers reject it and
+# it is an unsafe default). Only enable credentialed CORS for explicit origins.
+_allow_credentials = settings.CORS_ALLOW_ORIGINS != ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ALLOW_ORIGINS,
-    allow_credentials=True,
+    allow_credentials=_allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -32,7 +35,8 @@ app.mount("/metrics", metrics_app)
 # Routers
 app.include_router(health.router, prefix="/health", tags=["Health"])
 app.include_router(admin.router, prefix="/admin", tags=["Admin"])
-app.include_router(debug.router, prefix="/debug", tags=["Debug"])
+if settings.ENABLE_DEBUG_ENDPOINTS:
+    app.include_router(debug.router, prefix="/debug", tags=["Debug"])
 app.include_router(runs.router, prefix="/api", tags=["Runs"])
 
 

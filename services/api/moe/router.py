@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TaskStage(str, Enum):
@@ -32,6 +32,10 @@ class ModelTier(str, Enum):
 
 class RoutingDecision(BaseModel):
     """Decision from the router."""
+
+    # ``model_tier`` collides with pydantic's protected ``model_`` namespace;
+    # opt out so it does not warn (this is a plain data field, not model config).
+    model_config = ConfigDict(protected_namespaces=())
 
     stage: TaskStage
     experts: List[str] = Field(default_factory=list)

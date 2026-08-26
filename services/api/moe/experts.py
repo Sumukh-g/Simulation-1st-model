@@ -1,10 +1,28 @@
 """Expert definitions for MoE Committee."""
 from __future__ import annotations
 
+import json
+import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Type
+from typing import Any, Dict, List, Optional, Type
 
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
+
+
+def _resolve_tier(tier: Optional[str]):
+    """Map a string/None tier to an LLMTier without importing at module load."""
+    from services.common.llm import LLMTier
+
+    if isinstance(tier, LLMTier):
+        return tier
+    if tier is None:
+        return LLMTier.STANDARD
+    try:
+        return LLMTier(str(tier))
+    except ValueError:
+        return LLMTier.STANDARD
 
 
 class ExpertInput(BaseModel):
@@ -76,6 +94,55 @@ class ExpertBase(ABC):
     async def execute(self, input_data: ExpertInput) -> ExpertContract:
         """Execute the expert's task."""
         raise NotImplementedError
+
+    # -- LLM helpers ------------------------------------------------------- #
+    # Experts may call these to reason with real models. Every helper returns
+    # None on any failure so callers fall back to deterministic behavior and
+    # never fabricate simulation outputs.
+    async def _llm_json(
+        self, system: str, user: str, *, tier: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        try:
+            from services.common import llm
+        except Exception:  # pragma: no cover
+            return None
+        if not llm.is_enabled() or not llm.available_providers():
+            return None
+        chosen = _resolve_tier(tier)
+        try:
+            return await llm.acomplete_json(system=system, user=user, tier=chosen)
+        except llm.LLMError as exc:
+            logger.info("Expert '%s' LLM call failed (%s)", self.expert_id, type(exc).__name__)
+            return None
+
+    async def _llm_json_ensemble(self, system: str, user: str) -> List[Dict[str, Any]]:
+        """Fan out to every configured provider and return all parsed JSON payloads.
+
+        This realizes the "multiple models -> best output" committee: with several
+        providers configured, each contributes a candidate that the caller merges;
+        with one provider it is simply a single call.
+        """
+        try:
+            from services.common import llm
+        except Exception:  # pragma: no cover
+            return []
+        if not llm.is_enabled() or not llm.available_providers():
+            return []
+        messages = [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ]
+        try:
+            responses = await llm.ensemble(messages, json_mode=True)
+        except Exception:  # noqa: BLE001
+            return []
+        payloads: List[Dict[str, Any]] = []
+        for resp in responses:
+            try:
+                payloads.append(llm.extract_json(resp.text))
+            except Exception:  # noqa: BLE001
+                continue
+        return payloads
 
 
 class PlannerPayload(BaseModel):
@@ -157,16 +224,105 @@ class CauseModeler(ExpertBase):
     def output_schema(self) -> Type[BaseModel]:
         return CauseModelerPayload
 
+    _SYSTEM = (
+        "You are a causal-reasoning expert for decision optimization. Given a goal "
+        "and constraints, identify the key decision levers and how they drive the "
+        "outcome. Respond with ONLY JSON of shape:\n"
+        '{"causal_graph": {"<driver>": ["<affected_metric_or_driver>", ...]}, '
+        '"key_drivers": ["<driver>", ...], '
+        '"uncertainties": {"<driver>": 0.0-1.0}}\n'
+        "Keep it to 3-6 concrete drivers. Do not fabricate numeric simulation results."
+    )
+
+    def _prompt(self, input_data: ExpertInput) -> str:
+        return json.dumps(
+            {
+                "goal": input_data.task,
+                "constraints": input_data.constraints,
+                "context": input_data.context,
+            },
+            default=str,
+        )
+
+    @staticmethod
+    def _coerce(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if not isinstance(payload, dict):
+            return None
+        graph_raw = payload.get("causal_graph", {})
+        graph: Dict[str, List[str]] = {}
+        if isinstance(graph_raw, dict):
+            for node, children in graph_raw.items():
+                if isinstance(children, list):
+                    graph[str(node)] = [str(c) for c in children]
+                elif children is not None:
+                    graph[str(node)] = [str(children)]
+        drivers = [str(d) for d in payload.get("key_drivers", []) if isinstance(payload.get("key_drivers"), list)]
+        unc_raw = payload.get("uncertainties", {})
+        unc: Dict[str, float] = {}
+        if isinstance(unc_raw, dict):
+            for k, v in unc_raw.items():
+                try:
+                    unc[str(k)] = max(0.0, min(1.0, float(v)))
+                except (TypeError, ValueError):
+                    continue
+        if not graph and not drivers:
+            return None
+        return {"causal_graph": graph, "key_drivers": drivers, "uncertainties": unc}
+
+    @classmethod
+    def _merge(cls, payloads: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Consensus merge across provider candidates (union + averaged uncertainty)."""
+        graph: Dict[str, List[str]] = {}
+        drivers: List[str] = []
+        unc_acc: Dict[str, List[float]] = {}
+        for p in payloads:
+            for node, children in p.get("causal_graph", {}).items():
+                existing = graph.setdefault(node, [])
+                for c in children:
+                    if c not in existing:
+                        existing.append(c)
+            for d in p.get("key_drivers", []):
+                if d not in drivers:
+                    drivers.append(d)
+            for k, v in p.get("uncertainties", {}).items():
+                unc_acc.setdefault(k, []).append(v)
+        uncertainties = {k: round(sum(vs) / len(vs), 3) for k, vs in unc_acc.items() if vs}
+        return {"causal_graph": graph, "key_drivers": drivers, "uncertainties": uncertainties}
+
     async def execute(self, input_data: ExpertInput) -> ExpertContract:
-        payload = {
-            "causal_graph": {},
-            "key_drivers": [],
-            "uncertainties": {},
-        }
+        stakes = float(input_data.context.get("stakes", 0.5) or 0.5)
+        use_ensemble = bool(input_data.context.get("use_ensemble"))
+        user = self._prompt(input_data)
+
+        candidates: List[Dict[str, Any]] = []
+        if use_ensemble:
+            for raw in await self._llm_json_ensemble(self._SYSTEM, user):
+                coerced = self._coerce(raw)
+                if coerced:
+                    candidates.append(coerced)
+        else:
+            tier = "advanced" if stakes >= 0.8 else "standard"
+            raw = await self._llm_json(self._SYSTEM, user, tier=tier)
+            coerced = self._coerce(raw) if raw else None
+            if coerced:
+                candidates.append(coerced)
+
+        if candidates:
+            merged = self._merge(candidates)
+            # More agreeing providers -> higher confidence, capped.
+            confidence = min(0.95, 0.7 + 0.08 * (len(candidates) - 1))
+            return self._build_contract(
+                payload=merged,
+                confidence=confidence,
+                assumptions=[f"Causal model synthesized from {len(candidates)} model(s)"],
+            )
+
+        # Deterministic fallback: no fabricated drivers, low confidence, flag escalation.
         return self._build_contract(
-            payload=payload,
-            confidence=0.75,
-            assumptions=["Drivers are stable across scenarios"],
+            payload={"causal_graph": {}, "key_drivers": [], "uncertainties": {}},
+            confidence=0.4,
+            assumptions=["No LLM available; causal model not inferred"],
+            requires_escalation=True,
         )
 
 
@@ -245,15 +401,35 @@ class Critic(ExpertBase):
     def output_schema(self) -> Type[BaseModel]:
         return CriticPayload
 
+    _SYSTEM = (
+        "You are a critical reviewer of a decision-optimization plan. Identify concrete "
+        "weaknesses and actionable fixes. Respond with ONLY JSON of shape:\n"
+        '{"issues": [{"description": str, "severity": "low"|"medium"|"high"}], '
+        '"recommendations": [str], "overall_quality": 0.0-1.0}\n'
+        "Be specific; do not fabricate data."
+    )
+
     async def execute(self, input_data: ExpertInput) -> ExpertContract:
-        payload = {
-            "issues": [],
-            "recommendations": [],
-            "overall_quality": 0.8,
-        }
+        user = json.dumps(
+            {"goal": input_data.task, "constraints": input_data.constraints, "context": input_data.context},
+            default=str,
+        )
+        raw = await self._llm_json(self._SYSTEM, user, tier="standard")
+        if isinstance(raw, dict):
+            issues = [i for i in raw.get("issues", []) if isinstance(i, dict)]
+            recs = [str(r) for r in raw.get("recommendations", []) if r]
+            try:
+                quality = max(0.0, min(1.0, float(raw.get("overall_quality", 0.8))))
+            except (TypeError, ValueError):
+                quality = 0.8
+            return self._build_contract(
+                payload={"issues": issues, "recommendations": recs, "overall_quality": quality},
+                confidence=0.85,
+                risks=[i.get("description", "") for i in issues if i.get("severity") == "high"][:3],
+            )
         return self._build_contract(
-            payload=payload,
-            confidence=0.85,
+            payload={"issues": [], "recommendations": [], "overall_quality": 0.8},
+            confidence=0.6,
             risks=["Unverified assumptions may bias outcomes"],
         )
 
@@ -272,15 +448,33 @@ class RedTeam(ExpertBase):
     def output_schema(self) -> Type[BaseModel]:
         return RedTeamPayload
 
+    _SYSTEM = (
+        "You are a red-team analyst stress-testing a decision plan. Identify how it "
+        "could fail or be gamed. Respond with ONLY JSON of shape:\n"
+        '{"attack_vectors": [{"description": str}], '
+        '"failure_modes": [{"description": str, "likelihood": "low"|"medium"|"high"}], '
+        '"mitigations": [str]}\n'
+        "Be specific and realistic; do not fabricate data."
+    )
+
     async def execute(self, input_data: ExpertInput) -> ExpertContract:
-        payload = {
-            "attack_vectors": [],
-            "failure_modes": [],
-            "mitigations": [],
-        }
+        user = json.dumps(
+            {"goal": input_data.task, "constraints": input_data.constraints, "context": input_data.context},
+            default=str,
+        )
+        raw = await self._llm_json(self._SYSTEM, user, tier="standard")
+        if isinstance(raw, dict):
+            attacks = [a for a in raw.get("attack_vectors", []) if isinstance(a, dict)]
+            failures = [f for f in raw.get("failure_modes", []) if isinstance(f, dict)]
+            mitigations = [str(m) for m in raw.get("mitigations", []) if m]
+            return self._build_contract(
+                payload={"attack_vectors": attacks, "failure_modes": failures, "mitigations": mitigations},
+                confidence=0.8,
+                risks=[f.get("description", "") for f in failures][:3],
+            )
         return self._build_contract(
-            payload=payload,
-            confidence=0.8,
+            payload={"attack_vectors": [], "failure_modes": [], "mitigations": []},
+            confidence=0.6,
             risks=["Model leakage risk in data handling"],
         )
 

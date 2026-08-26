@@ -69,7 +69,7 @@ class ToyPack(DomainPackBase):
         run_id: str,
     ) -> OutcomeBundle:
         """Run the toy simulation."""
-        start_time = time.time()
+        start_time = time.perf_counter()
         rng = np.random.RandomState(seed)
         
         # Fidelity affects precision/noise
@@ -130,7 +130,7 @@ class ToyPack(DomainPackBase):
             (state.target_x - state.x) ** 2 + (state.target_y - state.y) ** 2
         )
         
-        execution_time = (time.time() - start_time) * 1000
+        execution_time = max((time.perf_counter() - start_time) * 1000, 0.001)
         
         return OutcomeBundle(
             scenario_id=scenario_id,

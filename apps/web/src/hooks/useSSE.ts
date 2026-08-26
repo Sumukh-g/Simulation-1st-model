@@ -1,5 +1,5 @@
 import { useAppStore } from '@/store';
-import type { ScenarioResult, SSEEvent, StageStatus } from '@/types';
+import type { Run, RunCounters, ScenarioResult, StageStatus } from '@/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface UseSSEOptions {
@@ -9,16 +9,26 @@ interface UseSSEOptions {
   onReconnect?: () => void;
 }
 
+function safeParse<T>(raw: string): T | null {
+  try {
+    return JSON.parse(raw) as T;
+  } catch (err) {
+    console.error('Failed to parse SSE payload:', err);
+    return null;
+  }
+}
+
 export function useSSE({ runId, enabled = true, onError, onReconnect }: UseSSEOptions) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const completedRef = useRef(false);
   const [isConnected, setIsConnected] = useState(false);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  
+
   const {
     updateRunStage,
     updateRunCounters,
-    addScenarioResult,
+    setCandidates,
     setCurrentBest,
     setCurrentRun,
   } = useAppStore();
@@ -31,7 +41,12 @@ export function useSSE({ runId, enabled = true, onError, onReconnect }: UseSSEOp
       eventSourceRef.current.close();
     }
 
-    const url = `/api/runs/${runId}/stream`;
+    completedRef.current = false;
+    // Bypass the Next.js rewrite proxy for EventSource. Dev rewrites buffer /
+    // reset long-lived SSE connections ("socket hang up"), which left the UI
+    // stuck on "Reconnecting..." forever. Point the browser straight at the API.
+    const apiBase = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000').replace(/\/$/, '');
+    const url = `${apiBase}/api/runs/${runId}/stream`;
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
@@ -41,57 +56,76 @@ export function useSSE({ runId, enabled = true, onError, onReconnect }: UseSSEOp
       onReconnect?.();
     };
 
-    eventSource.onmessage = (event) => {
-      try {
-        const data: SSEEvent = JSON.parse(event.data);
-        handleEvent(data);
-      } catch (err) {
-        console.error('Failed to parse SSE event:', err);
-      }
-    };
+    // The API emits *named* SSE events; each must be registered explicitly.
+    eventSource.addEventListener('stage_update', (e) => {
+      const data = safeParse<StageStatus>((e as MessageEvent).data);
+      if (data) updateRunStage(data);
+    });
 
-    eventSource.onerror = (error) => {
+    eventSource.addEventListener('counters_update', (e) => {
+      const data = safeParse<RunCounters>((e as MessageEvent).data);
+      if (data) updateRunCounters(data);
+    });
+
+    // scenario_result carries the full ranked candidate list.
+    eventSource.addEventListener('scenario_result', (e) => {
+      const data = safeParse<ScenarioResult[]>((e as MessageEvent).data);
+      if (Array.isArray(data)) setCandidates(data);
+    });
+
+    eventSource.addEventListener('best_changed', (e) => {
+      const data = safeParse<ScenarioResult>((e as MessageEvent).data);
+      if (data && Object.keys(data).length > 0) setCurrentBest(data);
+    });
+
+    eventSource.addEventListener('run_completed', (e) => {
+      const data = safeParse<Run>((e as MessageEvent).data);
+      if (data) setCurrentRun(data);
+      // Terminal event: stop listening so we don't reconnect to a closed stream.
+      completedRef.current = true;
+      eventSource.close();
+      setIsConnected(false);
+    });
+
+    eventSource.addEventListener('error', (e) => {
+      const message = (e as MessageEvent).data;
+      if (message) console.error('SSE error event:', message);
+    });
+
+    eventSource.onerror = () => {
       setIsConnected(false);
       eventSource.close();
 
-      // Exponential backoff reconnect
-      const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
-      setReconnectAttempts((prev) => prev + 1);
+      // Don't reconnect after a normal terminal completion.
+      if (completedRef.current) return;
 
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connect();
-      }, delay);
+      // Before spinning forever, ask the API whether the run already ended
+      // (e.g. worker crashed mid-stream). If it did, adopt that snapshot and stop.
+      void (async () => {
+        try {
+          const res = await fetch(`/api/runs/${runId}`);
+          if (res.ok) {
+            const run = (await res.json()) as Run;
+            if (run.status === 'completed' || run.status === 'failed' || run.status === 'awaiting_input') {
+              setCurrentRun(run);
+              completedRef.current = true;
+              setIsConnected(false);
+              return;
+            }
+          }
+        } catch {
+          // fall through to reconnect
+        }
 
-      onError?.(new Error('SSE connection error'));
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+        setReconnectAttempts((prev) => prev + 1);
+        reconnectTimeoutRef.current = setTimeout(() => {
+          connect();
+        }, delay);
+        onError?.(new Error('SSE connection error'));
+      })();
     };
-  }, [runId, enabled, reconnectAttempts, onError, onReconnect]);
-
-  const handleEvent = useCallback((event: SSEEvent) => {
-    switch (event.type) {
-      case 'stage_update':
-        updateRunStage(event.data as StageStatus);
-        break;
-
-      case 'scenario_result':
-        addScenarioResult(event.data as ScenarioResult);
-        break;
-
-      case 'best_changed':
-        setCurrentBest(event.data as ScenarioResult);
-        break;
-
-      case 'run_completed':
-        setCurrentRun(event.data as any);
-        break;
-
-      case 'error':
-        console.error('SSE error event:', event.data);
-        break;
-
-      default:
-        console.log('Unknown SSE event type:', event.type);
-    }
-  }, [updateRunStage, addScenarioResult, setCurrentBest, setCurrentRun]);
+  }, [runId, enabled, reconnectAttempts, onError, onReconnect, updateRunStage, updateRunCounters, setCandidates, setCurrentBest, setCurrentRun]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -122,9 +156,11 @@ export function useSSE({ runId, enabled = true, onError, onReconnect }: UseSSEOp
   };
 }
 
-// Hook for fetching snapshot and reconciling state
+// Hook for fetching snapshot and reconciling state.
+// Also polls while a run is active so a dropped SSE stream cannot leave the
+// UI spinning on a stale "running" status forever.
 export function useRunSnapshot(runId: string | null) {
-  const { setCurrentRun, setEvidenceChunks, setBenchmarks } = useAppStore();
+  const { setCurrentRun, setEvidenceChunks, setBenchmarks, runStatus } = useAppStore();
 
   const fetchSnapshot = useCallback(async () => {
     if (!runId) return;
@@ -159,6 +195,14 @@ export function useRunSnapshot(runId: string | null) {
   useEffect(() => {
     fetchSnapshot();
   }, [fetchSnapshot]);
+
+  useEffect(() => {
+    if (!runId || runStatus !== 'running') return;
+    const id = setInterval(() => {
+      void fetchSnapshot();
+    }, 2000);
+    return () => clearInterval(id);
+  }, [runId, runStatus, fetchSnapshot]);
 
   return { refetch: fetchSnapshot };
 }

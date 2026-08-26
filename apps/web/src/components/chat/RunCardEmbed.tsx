@@ -1,20 +1,30 @@
 'use client';
 
 import { cn, getStatusColor } from '@/lib/utils';
-import type { RunCard } from '@/types';
-import { CheckCircle, Loader2, Play, XCircle } from 'lucide-react';
+import type { RunCard, RunStatus } from '@/types';
+import { CheckCircle, Clock, Loader2, Play, XCircle } from 'lucide-react';
 
 interface RunCardEmbedProps {
   card: RunCard;
 }
 
+const STATUS_ICONS: Record<RunStatus, JSX.Element> = {
+  idle: <Play className="w-4 h-4" />,
+  running: <Loader2 className="w-4 h-4 animate-spin" />,
+  completed: <CheckCircle className="w-4 h-4" />,
+  failed: <XCircle className="w-4 h-4" />,
+  awaiting_input: <Clock className="w-4 h-4" />,
+};
+
+const STATUS_LABELS: Record<RunStatus, string> = {
+  idle: 'Idle',
+  running: 'Running',
+  completed: 'Completed',
+  failed: 'Failed',
+  awaiting_input: 'Awaiting input',
+};
+
 export function RunCardEmbed({ card }: RunCardEmbedProps) {
-  const statusIcons = {
-    idle: <Play className="w-4 h-4" />,
-    running: <Loader2 className="w-4 h-4 animate-spin" />,
-    completed: <CheckCircle className="w-4 h-4" />,
-    failed: <XCircle className="w-4 h-4" />,
-  };
 
   return (
     <div className="bg-gradient-to-r from-primary-50 to-blue-50 border border-primary-200 rounded-xl p-4">
@@ -26,7 +36,7 @@ export function RunCardEmbed({ card }: RunCardEmbedProps) {
           )}
         >
           <div className={getStatusColor(card.status)}>
-            {statusIcons[card.status]}
+            {STATUS_ICONS[card.status]}
           </div>
         </div>
 
@@ -57,11 +67,13 @@ export function RunCardEmbed({ card }: RunCardEmbedProps) {
                   ? 'bg-green-100 text-green-700'
                   : card.status === 'failed'
                   ? 'bg-red-100 text-red-700'
+                  : card.status === 'awaiting_input'
+                  ? 'bg-amber-100 text-amber-700'
                   : 'bg-gray-100 text-gray-700'
               )}
             >
-              {statusIcons[card.status]}
-              <span className="capitalize">{card.status}</span>
+              {STATUS_ICONS[card.status]}
+              <span>{STATUS_LABELS[card.status]}</span>
             </span>
           </div>
         </div>

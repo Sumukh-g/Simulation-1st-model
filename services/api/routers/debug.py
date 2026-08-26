@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, List
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from ..auth import UserContext, get_current_user
 from ..moe import MoECommittee, MoETask, TaskStage
 
 router = APIRouter()
@@ -27,7 +28,10 @@ class MoEDebugRequest(BaseModel):
 
 
 @router.post("/moe")
-async def debug_moe(request: MoEDebugRequest):
+async def debug_moe(
+    request: MoEDebugRequest,
+    user: UserContext = Depends(get_current_user),
+):
     committee = MoECommittee()
     task = MoETask(
         task=request.task,
