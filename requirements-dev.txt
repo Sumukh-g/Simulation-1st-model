@@ -43,6 +43,9 @@ ray==2.53.0
 # Artifact storage
 minio==7.2.7
 
+# PDF reports
+fpdf2==2.8.2
+
 # Retrieval. pymilvus is imported at module load by services/evidence, so the
 # evidence tests need it present even though nothing in the suite talks to a
 # live Milvus. sentence-transformers is deliberately absent: it is imported

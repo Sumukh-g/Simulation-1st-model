@@ -5,7 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatNumber(value: number, decimals = 2): string {
+export function formatNumber(value: number | null | undefined, decimals = 2): string {
+  if (value == null || Number.isNaN(value)) {
+    return '—';
+  }
   if (Math.abs(value) >= 1e6) {
     return (value / 1e6).toFixed(decimals) + 'M';
   }
@@ -15,7 +18,10 @@ export function formatNumber(value: number, decimals = 2): string {
   return value.toFixed(decimals);
 }
 
-export function formatPercentage(value: number, decimals = 1): string {
+export function formatPercentage(value: number | null | undefined, decimals = 1): string {
+  if (value == null || Number.isNaN(value)) {
+    return '—';
+  }
   return (value * 100).toFixed(decimals) + '%';
 }
 

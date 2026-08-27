@@ -309,7 +309,17 @@ class SimulationRunWorkflow:
                 retry_policy=RetryPolicy(maximum_attempts=3),
             )
             converged = convergence.get("converged", False)
-            self.completed_scenarios += len(batch)
+            batch_success = sum(
+                1
+                for row in scored
+                if row.get("score") is not None
+                and (row.get("outcome") or {}).get("metrics")
+            )
+            self.completed_scenarios += batch_success
+
+            if batch_success == 0 and not all_scored and iteration >= 2:
+                self.stop_reason = "all_simulations_failed"
+                break
 
         await self._stage(run_id, "optimize", "completed")
         await self._stage(run_id, "simulation", "completed")
@@ -485,7 +495,7 @@ class SimulationRunWorkflow:
                     "cache_hits": cache_hits,
                     "compute_cost": compute_time,
                     "storage_cost": float(storage_bytes),
-                    "budget_consumed": self.completed_scenarios,
+                    "budget_consumed": int(summary.get("completed") or self.completed_scenarios),
                     "budget_total": max_scenarios,
                 },
                 objectives,
@@ -493,6 +503,28 @@ class SimulationRunWorkflow:
             start_to_close_timeout=timedelta(minutes=3),
             retry_policy=RetryPolicy(maximum_attempts=3),
         )
+
+        completed_count = int(summary.get("completed") or 0)
+        if completed_count == 0:
+            spec_patch = dict(run_spec)
+            spec_patch["error"] = (
+                "All simulations failed or produced no scored scenarios. "
+                "Check action schemas — only numeric levers are supported for optimization."
+            )
+            await self._save_spec(run_id, spec_patch)
+            await self._stage(run_id, "simulation", "failed")
+            await self._stage(run_id, "optimize", "failed")
+            await self._stage(run_id, "report", "failed")
+            await self._set_status(run_id, "failed")
+            self.status = "failed"
+            await self._stage(run_id, "judge", "failed")
+            return {
+                "run_id": run_id,
+                "status": "failed",
+                "error": spec_patch["error"],
+                "summary": summary,
+            }
+
         await self._stage(run_id, "judge", "completed")
 
         # Step 9: Report assembly and artifact

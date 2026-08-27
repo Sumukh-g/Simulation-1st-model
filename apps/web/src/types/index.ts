@@ -107,6 +107,7 @@ export interface Run {
   }>;
   draft_pack?: Record<string, unknown>;
   mode_status?: string;
+  report_pdf?: { pdf_available?: boolean; pdf_path?: string; pdf_size_bytes?: number };
 }
 
 /** Lightweight row for the history sidebar (from GET /api/runs). */

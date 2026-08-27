@@ -80,7 +80,12 @@ export function useSSE({ runId, enabled = true, onError, onReconnect }: UseSSEOp
 
     eventSource.addEventListener('run_completed', (e) => {
       const data = safeParse<Run>((e as MessageEvent).data);
-      if (data) setCurrentRun(data);
+      if (data) {
+        setCurrentRun(data);
+        if (data.status === 'completed' && (data.candidates?.length ?? 0) > 0) {
+          useAppStore.getState().setActiveTab('report');
+        }
+      }
       // Terminal event: stop listening so we don't reconnect to a closed stream.
       completedRef.current = true;
       eventSource.close();

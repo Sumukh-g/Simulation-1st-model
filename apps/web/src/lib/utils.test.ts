@@ -26,6 +26,11 @@ describe('cn', () => {
 });
 
 describe('formatNumber', () => {
+  it('returns em dash for null/undefined', () => {
+    expect(formatNumber(undefined)).toBe('—');
+    expect(formatNumber(null)).toBe('—');
+  });
+
   it('formats small numbers', () => {
     expect(formatNumber(123.456)).toBe('123.46');
     expect(formatNumber(0.123, 3)).toBe('0.123');

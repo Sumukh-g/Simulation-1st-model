@@ -7,6 +7,7 @@ import { HeatmapsTab } from './tabs/HeatmapsTab';
 import { LeaderboardTab } from './tabs/LeaderboardTab';
 import { LogsTab } from './tabs/LogsTab';
 import { OverviewTab } from './tabs/OverviewTab';
+import { ReportTab } from './tabs/ReportTab';
 import { ScenarioDetailTab } from './tabs/ScenarioDetailTab';
 
 export function WorkspaceContent() {
@@ -18,6 +19,8 @@ export function WorkspaceContent() {
         return <OverviewTab />;
       case 'leaderboard':
         return <LeaderboardTab />;
+      case 'report':
+        return <ReportTab />;
       case 'detail':
         return <ScenarioDetailTab />;
       case 'charts':

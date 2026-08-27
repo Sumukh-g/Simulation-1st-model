@@ -190,19 +190,21 @@ export function ScenarioDetailTab() {
           
           <div className="space-y-2">
             {scenario.judge_score.breakdown.map((item) => (
-              <div key={item.metric_name} className="flex items-center gap-3">
-                <span className="text-sm text-gray-600 w-32">{item.metric_name}</span>
+              <div key={item.metric_name ?? (item as { metric?: string }).metric} className="flex items-center gap-3">
+                <span className="text-sm text-gray-600 w-32">
+                  {item.metric_name ?? (item as { metric?: string }).metric}
+                </span>
                 <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-primary-500"
-                    style={{ width: `${item.threshold_score * 100}%` }}
+                    style={{ width: `${(item.threshold_score ?? 0) * 100}%` }}
                   />
                 </div>
                 <span className="text-sm font-mono w-16 text-right">
-                  {formatNumber(item.raw_value)}
+                  {formatNumber(item.raw_value ?? (item as { value?: number }).value)}
                 </span>
                 <span className="text-xs text-gray-400 w-12">
-                  ×{item.weight}
+                  ×{formatNumber(item.weight ?? 1, 2)}
                 </span>
               </div>
             ))}

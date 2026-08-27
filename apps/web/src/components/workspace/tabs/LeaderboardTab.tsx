@@ -153,7 +153,7 @@ export function LeaderboardTab() {
                           className="text-xs bg-gray-100 px-1.5 py-0.5 rounded"
                           title={metric.name}
                         >
-                          {metric.name.slice(0, 8)}: {formatNumber(metric.value)}
+                          {metric.name.slice(0, 8)}: {formatNumber(metric.value ?? undefined)}
                         </span>
                       ))}
                     </div>

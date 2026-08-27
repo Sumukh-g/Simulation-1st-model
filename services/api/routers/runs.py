@@ -3,6 +3,7 @@ import uuid
 from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, status
+from fastapi.responses import FileResponse, Response
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
@@ -79,6 +80,7 @@ class RunResponse(BaseModel):
     candidate_methods: Optional[List[dict]] = None
     draft_pack: Optional[dict] = None
     mode_status: Optional[str] = None
+    report_pdf: Optional[dict] = None
 
     class Config:
         from_attributes = True
@@ -176,6 +178,7 @@ def _run_to_response(run: models.Run) -> dict:
         "candidate_methods": spec.get("candidate_methods"),
         "draft_pack": spec.get("draft_pack") or spec.get("ephemeral_pack"),
         "mode_status": spec.get("mode_status"),
+        "report_pdf": spec.get("report_pdf"),
     }
 
 
@@ -694,3 +697,43 @@ async def get_run_benchmarks(
             }
         )
     return {"benchmarks": benchmarks_data}
+
+
+@router.get("/runs/{run_id}/report.pdf")
+async def download_run_report_pdf(
+    run_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    user: UserContext = Depends(get_current_user),
+):
+    """Download the structured PDF report for a completed run."""
+    if user.org_id is None:
+        raise HTTPException(status_code=400, detail="Organization context required.")
+    run = await models.Run.get_by_id_and_org(session, run_id, user.org_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found.")
+
+    spec = dict(run.run_spec or {})
+    pdf_meta = spec.get("report_pdf") or {}
+    pdf_path = pdf_meta.get("pdf_path")
+
+    from pathlib import Path
+    from services.report.pdf_builder import build_run_report_pdf, run_record_to_report_data
+
+    if pdf_path and Path(pdf_path).is_file():
+        return FileResponse(
+            pdf_path,
+            media_type="application/pdf",
+            filename=f"gsip-report-{run_id}.pdf",
+        )
+
+    run_data = run_record_to_report_data(run, spec)
+    try:
+        pdf_bytes = build_run_report_pdf(run_data)
+    except Exception as exc:
+        logger.exception("On-demand PDF generation failed for run %s", run_id)
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {exc}") from exc
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="gsip-report-{run_id}.pdf"'},
+    )

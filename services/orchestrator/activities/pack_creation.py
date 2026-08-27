@@ -12,6 +12,8 @@ from typing import Any, Dict, List
 
 from services.common import llm
 
+from compute.domain_packs.ephemeral_pack import sanitize_pack_schemas, build_initial_state
+
 logger = logging.getLogger(__name__)
 
 _CREATE_SYSTEM = """You are GSIP's domain-pack architect.
@@ -188,9 +190,9 @@ def _heuristic_create(prompt: str) -> Dict[str, Any]:
         f"Interpreted your request as **{domain}**: {_snippet(prompt, 120)}\n\n"
         f"### Candidate methods\n{method_lines}\n\n"
         f"### Draft pack (`{pack_name}`, fidelity TOY/UNVALIDATED)\n"
-        f"Suggested method: **{recommended['name']}**. "
-        f"State/action schemas and metrics are drafted below in the run record. "
-        f"Confirm a method to continue pack generation (full simulate() wiring is the next step).\n\n"
+        f"Auto-selected method: **{recommended['name']}**. "
+        f"Running scenario search with the drafted levers and metrics now.\n\n"
+        f"_Illustrative TOY/UNVALIDATED fidelity — validate before production use._\n\n"
         f"_LLM providers were unavailable — used a deterministic heuristic tailored to your prompt._"
     )
     return {
@@ -282,10 +284,24 @@ def _synthesize_create_message(data: Dict[str, Any], prompt: str) -> str:
                 f"### Draft pack (`{draft.get('name', 'draft')}`, fidelity {draft.get('fidelity', 'TOY')})",
                 draft.get("simulate_outline")
                 and ("Outline: " + "; ".join(draft["simulate_outline"][:4]) if isinstance(draft.get("simulate_outline"), list) else "")
-                or f"Suggested method id: {data.get('recommended_method_id', 'n/a')}. Confirm a method to continue.",
+                or f"Auto-selected method: {data.get('recommended_method_id', 'n/a')}.",
             ]
         )
-    lines.append("\nConfirm which method to use so we can finalize the pack schemas.")
+    rec_id = data.get("recommended_method_id")
+    rec_name = next(
+        (m.get("name") for m in methods if isinstance(m, dict) and m.get("id") == rec_id),
+        rec_id or "recommended",
+    )
+    lines.extend(
+        [
+            "",
+            f"**Simulation starting** with method **{rec_name}**. "
+            "Each scenario runs the deterministic simulator (not repeated LLM calls). "
+            "Results appear in Overview, Leaderboard, and the PDF report when complete.",
+            "",
+            "_TOY/UNVALIDATED fidelity — illustrative until the pack is ratified._",
+        ]
+    )
     return "\n".join(line for line in lines if line is not None)
 
 
@@ -433,7 +449,7 @@ def materialize_for_execution(
     prompt: str,
 ) -> Dict[str, Any]:
     """Turn LLM bootstrap into run_spec fields that drive the full Temporal pipeline."""
-    draft = dict(bootstrap.get("draft_pack") or bootstrap.get("ephemeral_pack") or {})
+    draft = sanitize_pack_schemas(dict(bootstrap.get("draft_pack") or bootstrap.get("ephemeral_pack") or {}))
     objectives = list(bootstrap.get("objectives") or [])
 
     if mode == "create_pack":
@@ -466,18 +482,10 @@ def materialize_for_execution(
     draft["name"] = pack_name
     draft.setdefault("fidelity", "ILLUSTRATIVE" if mode == "no_pack" else "TOY")
     draft.setdefault("display_name", pack_name.replace("-", " ").title())
+    draft = sanitize_pack_schemas(draft)
 
-    # Executable ranges / state for scenario generator
     action_ranges = {f["name"]: {"min": 0.0, "max": 100.0} for f in draft["action_schema"] if f.get("name")}
-    initial_state: Dict[str, Any] = {"baseline": 100.0}
-    for m in draft["metrics"]:
-        mname = m.get("name")
-        if not mname:
-            continue
-        if m.get("direction") == "minimize":
-            initial_state[f"{mname}_baseline"] = 100.0
-        else:
-            initial_state[f"{mname}_baseline"] = 1.0
+    initial_state = build_initial_state(draft, objectives)
 
     prelude = [
         {"stage": "classify", "status": "completed", "message": bootstrap.get("domain", "")},
@@ -507,14 +515,25 @@ def materialize_for_execution(
             }
         )
 
-    exec_note = (
-        "_Illustrative results from a reduced-order ephemeral simulator — not a ratified domain pack._"
-        if mode == "no_pack"
-        else "_Results from an auto-generated TOY/UNVALIDATED pack draft — confirm before production use._"
-    )
-    assistant = (bootstrap.get("assistant_message") or "").strip()
-    if exec_note not in assistant:
-        assistant = f"{assistant}\n\n{exec_note}\n\n**Simulation started** using pack `{pack_name}`."
+    method_name = (selected_method or {}).get("name") or selected or "default"
+    if mode == "no_pack":
+        assistant = (
+            f"### Illustrative simulation (no registered pack)\n"
+            f"Problem: {_snippet(prompt, 140)}\n\n"
+            f"Ephemeral pack **{pack_name}** is running scenario search now. "
+            f"Each scenario evaluates different lever settings through a reduced-order simulator "
+            f"(this is **not** the LLM being called repeatedly).\n\n"
+            f"_ILLUSTRATIVE fidelity — validate before operational decisions._"
+        )
+    else:
+        assistant = (
+            f"### Auto-generated domain pack\n"
+            f"**{bootstrap.get('domain', 'unknown')}** — {(bootstrap.get('summary') or _snippet(prompt, 120))}\n\n"
+            f"Auto-selected method: **{method_name}**. "
+            f"Pack `{pack_name}` is running scenario search with drafted levers and metrics. "
+            f"Simulations use deterministic math, not repeated LLM calls.\n\n"
+            f"_TOY/UNVALIDATED fidelity — confirm assumptions before production use._"
+        )
 
     return {
         "domain_pack": pack_name,

@@ -180,6 +180,41 @@ def _build_narrative(
     return {"text": template, "generated_by": "template"}
 
 
+def _normalize_judge_breakdown(items: List[Dict[str, Any]] | None) -> List[Dict[str, Any]]:
+    """Normalize legacy {metric,value,contribution} rows to UI schema."""
+    normalized: List[Dict[str, Any]] = []
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        if item.get("metric_name") is not None and item.get("raw_value") is not None:
+            normalized.append(item)
+            continue
+        metric = item.get("metric_name") or item.get("metric") or "metric"
+        raw = item.get("raw_value", item.get("value", 0.0))
+        contrib = item.get("contribution", raw)
+        try:
+            raw_f = float(raw)
+        except (TypeError, ValueError):
+            raw_f = 0.0
+        try:
+            contrib_f = float(contrib)
+        except (TypeError, ValueError):
+            contrib_f = raw_f
+        ts = item.get("threshold_score")
+        if ts is None:
+            ts = min(1.0, max(0.0, abs(contrib_f) / max(abs(contrib_f), 1.0)))
+        weight = item.get("weight", 1.0)
+        normalized.append(
+            {
+                "metric_name": metric,
+                "raw_value": raw_f,
+                "threshold_score": float(ts),
+                "weight": float(weight) if weight is not None else 1.0,
+            }
+        )
+    return normalized
+
+
 @activity.defn
 async def persist_run_progress(
     run_id: str,
@@ -235,6 +270,7 @@ async def persist_run_progress(
         bench = row.get("benchmark_results", []) or []
         passed = sum(1 for b in bench if b.get("passed") is True)
         confidence = round(0.5 + 0.5 * ((row["score"] - s_min) / span), 3)
+        breakdown = _normalize_judge_breakdown(row.get("breakdown", []))
         candidates.append(
             {
                 "id": row.get("scenario_id"),
@@ -248,7 +284,7 @@ async def persist_run_progress(
                     "scenario_id": row.get("scenario_id"),
                     "score": row.get("score"),
                     "level": level_for(index),
-                    "breakdown": row.get("breakdown", []),
+                    "breakdown": breakdown,
                     "benchmarks_passed": passed,
                     "benchmarks_total": len(bench),
                 },
@@ -632,7 +668,38 @@ async def persist_report_artifact(
     encoded = json.dumps(report_payload, sort_keys=True).encode("utf-8")
     checksum = hashlib.sha256(encoded).hexdigest()
     object_key = f"runs/{run_id}/reports/report.json"
-    return await persist_artifact(
+
+    # Build PDF from live run record and store on disk for download.
+    pdf_meta: Dict[str, Any] = {"pdf_available": False}
+    try:
+        from pathlib import Path
+        from services.report.pdf_builder import build_run_report_pdf, run_record_to_report_data
+
+        async with get_session() as session:
+            run = await session.get(models.Run, _to_uuid(run_id))
+            if run is not None:
+                spec = dict(run.run_spec or {})
+                if report_payload.get("summary") and not spec.get("summary"):
+                    spec["summary"] = report_payload["summary"]
+                run_data = run_record_to_report_data(run, spec)
+                pdf_bytes = build_run_report_pdf(run_data)
+                reports_dir = Path(__file__).resolve().parents[3] / "data" / "reports"
+                reports_dir.mkdir(parents=True, exist_ok=True)
+                pdf_path = reports_dir / f"{run_id}.pdf"
+                pdf_path.write_bytes(pdf_bytes)
+                pdf_meta = {
+                    "pdf_available": True,
+                    "pdf_path": str(pdf_path),
+                    "pdf_size_bytes": len(pdf_bytes),
+                }
+                spec["report_pdf"] = pdf_meta
+                run.run_spec = spec
+                flag_modified(run, "run_spec")
+                await session.commit()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("PDF report generation failed for run %s: %s", run_id, exc)
+
+    artifact = await persist_artifact(
         run_id=run_id,
         object_key=object_key,
         checksum=checksum,
@@ -640,3 +707,4 @@ async def persist_report_artifact(
         content_type="application/json",
         size_bytes=len(encoded),
     )
+    return {**artifact, **pdf_meta}

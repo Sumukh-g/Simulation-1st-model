@@ -201,6 +201,11 @@ def _run_batch_inprocess(
             results.append(
                 {
                     "scenario_id": scenario_id,
+                    "scenario_instance_id": scenario.get("scenario_instance_id"),
+                    "run_id": scenario.get("run_id"),
+                    "state": scenario.get("state"),
+                    "actions": scenario.get("actions"),
+                    "seed": scenario.get("seed"),
                     "status": "completed",
                     "outcome": slim_outcome,
                     "scenario_hash": scenario.get("scenario_hash"),
@@ -346,12 +351,25 @@ async def judge_score_outcomes(
 
         breakdown = []
         score = 0.0
+        contributions: Dict[str, float] = {}
+        total_weight = sum(rubric_weights.values()) or 1.0
         for metric_name, weight in rubric_weights.items():
             value = metrics.get(metric_name, 0.0)
             contribution = value * weight * direction_sign.get(metric_name, 1.0)
             score += contribution
+            contributions[metric_name] = contribution
+
+        score_den = sum(abs(v) for v in contributions.values()) or 1.0
+        for metric_name, weight in rubric_weights.items():
+            value = metrics.get(metric_name, 0.0)
+            contribution = contributions[metric_name]
             breakdown.append(
                 {
+                    "metric_name": metric_name,
+                    "raw_value": value,
+                    "threshold_score": min(1.0, max(0.0, abs(contribution) / score_den)),
+                    "weight": weight / total_weight,
+                    # Legacy keys kept for older consumers
                     "metric": metric_name,
                     "value": value,
                     "contribution": contribution,

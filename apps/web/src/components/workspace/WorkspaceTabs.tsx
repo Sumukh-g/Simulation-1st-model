@@ -19,6 +19,7 @@ const tabs = [
   { id: 'charts', label: 'Charts', icon: LineChart },
   { id: 'heatmaps', label: 'Heatmaps', icon: Grid3X3 },
   { id: 'evidence', label: 'Evidence', icon: FileSearch },
+  { id: 'report', label: 'Report', icon: FileText },
   { id: 'logs', label: 'Logs & Debug', icon: Terminal },
 ];
 

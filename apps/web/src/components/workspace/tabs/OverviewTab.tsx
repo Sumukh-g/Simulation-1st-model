@@ -40,9 +40,10 @@ export function OverviewTab() {
   }
 
   const { stages, counters, current_best, candidates, narrative, summary, assistant_message, classification, candidate_methods, draft_pack, simulation_mode } = currentRun;
-  const budgetPercent = counters.budget_total > 0 
-    ? counters.budget_consumed / counters.budget_total 
-    : 0;
+  const budgetPercent =
+    counters.budget_total > 0
+      ? Math.min(1, counters.budget_consumed / counters.budget_total)
+      : null;
 
   const bestScore = current_best?.judge_score?.score;
   const meanScore = summary?.mean_score ?? null;
@@ -163,8 +164,8 @@ export function OverviewTab() {
         <CounterCard
           icon={<Clock className="w-5 h-5 text-purple-500" />}
           label="Budget Used"
-          value={formatPercentage(budgetPercent)}
-          progress={budgetPercent}
+          value={budgetPercent != null ? formatPercentage(budgetPercent) : '—'}
+          progress={budgetPercent ?? 0}
         />
       </div>
 
