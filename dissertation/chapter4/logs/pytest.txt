@@ -1,0 +1,159 @@
+........................................................................ [ 32%]
+........................................................................ [ 64%]
+........................................................................ [ 96%]
+.......                                                                  [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/starlette/formparsers.py:12
+  /workspace/.venv/lib/python3.12/site-packages/starlette/formparsers.py:12: PendingDeprecationWarning: Please use `import python_multipart` instead.
+    import multipart
+
+tests/test_auth_membership.py::test_rejects_org_without_membership
+  /workspace/.venv/lib/python3.12/site-packages/pytest_asyncio/plugin.py:757: DeprecationWarning: The event_loop fixture provided by pytest-asyncio has been redefined in
+  /workspace/tests/conftest.py:7
+  Replacing the event_loop fixture with a custom implementation is deprecated
+  and will lead to errors in the future.
+  If you want to request an asyncio event loop with a scope other than function
+  scope, use the "scope" argument to the asyncio mark when marking the tests.
+  If you want to return different types of event loops, use the event_loop_policy
+  fixture.
+  
+    warnings.warn(
+
+tests/test_benchmarks.py: 2 warnings
+tests/test_optimizer.py: 17 warnings
+  /workspace/.venv/lib/python3.12/site-packages/sklearn/gaussian_process/_gpr.py:659: ConvergenceWarning: lbfgs failed to converge (status=2):
+  ABNORMAL_TERMINATION_IN_LNSRCH.
+  
+  Increase the number of iterations (max_iter) or scale the data as shown in:
+      https://scikit-learn.org/stable/modules/preprocessing.html
+    _check_optimize_result("lbfgs", opt_res)
+
+tests/test_benchmarks.py::TestConvergence::test_hybrid_backend_runs_end_to_end
+tests/test_benchmarks.py::TestConvergence::test_hybrid_backend_runs_end_to_end
+tests/test_optimizer.py::TestToyPackOptimization::test_finds_toypack_optimum_hybrid
+tests/test_optimizer.py::TestToyPackOptimization::test_finds_toypack_optimum_hybrid
+tests/test_optimizer.py::TestToyPackOptimization::test_respects_constraints_while_optimizing
+tests/test_optimizer.py::TestToyPackOptimization::test_respects_constraints_while_optimizing
+  /workspace/.venv/lib/python3.12/site-packages/sklearn/gaussian_process/kernels.py:452: ConvergenceWarning: The optimal value found for dimension 0 of parameter k1__constant_value is close to the specified upper bound 100000.0. Increasing the bound and calling fit again may find a better value.
+    warnings.warn(
+
+tests/test_ephemeral_pack.py::test_pdf_builder_produces_bytes
+tests/test_ephemeral_pack.py::test_pdf_returns_bytes_not_bytearray
+  /workspace/services/report/pdf_builder.py:320: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    _write_line(pdf, 5, f"Generated {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')} by GSIP")
+
+tests/test_optimizer.py::TestBayesianOptimizer::test_finds_optimum_1d
+  /workspace/.venv/lib/python3.12/site-packages/sklearn/gaussian_process/kernels.py:442: ConvergenceWarning: The optimal value found for dimension 0 of parameter k1__constant_value is close to the specified lower bound 1e-05. Decreasing the bound and calling fit again may find a better value.
+    warnings.warn(
+
+tests/test_optimizer.py::TestBayesianOptimizer::test_finds_optimum_1d
+  /workspace/.venv/lib/python3.12/site-packages/sklearn/gaussian_process/kernels.py:442: ConvergenceWarning: The optimal value found for dimension 0 of parameter k2__length_scale is close to the specified lower bound 1e-05. Decreasing the bound and calling fit again may find a better value.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+
+---------- coverage: platform linux, python 3.12.3-final-0 -----------
+Name                                                   Stmts   Miss  Cover   Missing
+------------------------------------------------------------------------------------
+compute/domain_packs/__init__.py                           5      0   100%
+compute/domain_packs/ephemeral_pack.py                   197     60    70%   34, 36, 38, 44, 48, 51, 58-63, 73, 86, 98, 101, 104, 106, 112, 115, 121-122, 153, 159, 165-168, 198-199, 213, 217, 246, 255, 258-259, 262, 268-273, 282-302
+compute/domain_packs/finance_pack/__init__.py              2      0   100%
+compute/domain_packs/finance_pack/pack.py                121     49    60%   56, 211-251, 264-290, 299-304, 322-334
+compute/domain_packs/sdk/__init__.py                       4      0   100%
+compute/domain_packs/sdk/base.py                          59     21    64%   141-172, 181-182, 187
+compute/domain_packs/sdk/registry.py                      43     10    77%   66-67, 99-100, 105-109, 120-121
+compute/domain_packs/sdk/types.py                         81      1    99%   116
+compute/domain_packs/spatial_pack/__init__.py              2      0   100%
+compute/domain_packs/spatial_pack/pack.py                154     60    61%   144, 146, 149, 151, 239-242, 278-313, 327-344, 353-363, 385-416
+compute/domain_packs/toy_pack/__init__.py                  2      0   100%
+compute/domain_packs/toy_pack/pack.py                     85      5    94%   210, 215-216, 220, 249
+core/__init__.py                                           0      0   100%
+core/contract.py                                         114    114     0%   16-203
+libs/__init__.py                                           0      0   100%
+libs/ledger/__init__.py                                    0      0   100%
+libs/ledger/gsip_ledger/__init__.py                        2      0   100%
+libs/ledger/gsip_ledger/hashing.py                        49     20    59%   50-64, 140-145
+services/api/__init__.py                                   0      0   100%
+services/api/auth.py                                      73     29    60%   24-29, 65-87, 103-110, 114-115, 140-143, 151-156
+services/api/config.py                                    15      0   100%
+services/api/db/__init__.py                                1      0   100%
+services/api/db/base.py                                   26     10    62%   19-23, 53-57
+services/api/db/database.py                                8      2    75%   20-21
+services/api/db/models.py                                301     19    94%   182-185, 198-205, 416-425, 502-503, 522-531
+services/api/main.py                                      21     21     0%   2-45
+services/api/moe/__init__.py                               5      0   100%
+services/api/moe/arbitrator.py                           102      9    91%   91-93, 165-166, 180-183
+services/api/moe/committee.py                             50     26    48%   42-44, 47-92, 104-119
+services/api/moe/experts.py                              290     41    86%   19, 21, 24-25, 64, 114-116, 130, 137-138, 143-144, 161, 164-175, 196, 199-206, 250, 257-258, 266-267, 269, 349, 352-357, 376, 379-384, 423-424, 430, 475, 494, 497-502, 521, 524-530
+services/api/moe/router.py                               125     38    70%   68-71, 107, 116, 118, 123-126, 177-178, 203-204, 213-215, 218-237
+services/api/routers/__init__.py                           1      1     0%   3
+services/api/routers/admin.py                            107    107     0%   2-258
+services/api/routers/debug.py                             24     24     0%   2-46
+services/api/routers/health.py                             9      9     0%   2-21
+services/api/routers/runs.py                             363    363     0%   1-735
+services/common/__init__.py                                2      0   100%
+services/common/llm.py                                   323    116    64%   56, 59, 69, 190, 207-210, 214-217, 223-224, 241-242, 248-249, 289-298, 306, 314, 326, 354, 367, 371-407, 440-441, 458-478, 545-555, 572-598, 608-633
+services/evidence/__init__.py                              6      0   100%
+services/evidence/chunking.py                             65     13    80%   34, 55-56, 82, 87-94, 119, 124-131
+services/evidence/claims.py                              249     18    93%   225-226, 331, 364, 412, 417, 451, 481, 503-504, 521, 572-573, 590-597, 639
+services/evidence/config.py                               16      0   100%
+services/evidence/embeddings.py                           23     15    35%   15-21, 26-31, 36-40
+services/evidence/evidence_pack.py                        81     14    83%   65, 69, 123-132, 136-137, 141-142, 177, 181-184
+services/evidence/main.py                                 27     27     0%   2-55
+services/evidence/routers/__init__.py                      2      2     0%   2-4
+services/evidence/routers/claims.py                       78     78     0%   2-228
+services/evidence/routers/ingestion.py                    72     72     0%   2-132
+services/evidence/routers/packs.py                        63     63     0%   2-138
+services/evidence/routers/search.py                       35     35     0%   2-88
+services/evidence/vector_store.py                         54     39    28%   28-39, 43-87, 95-109, 118-145, 149-154
+services/judge/__init__.py                                 2      0   100%
+services/judge/config.py                                  10     10     0%   2-20
+services/judge/main.py                                    23     23     0%   2-50
+services/judge/routers/__init__.py                         0      0   100%
+services/judge/routers/benchmarks.py                      42     42     0%   2-118
+services/judge/routers/scoring.py                         60     60     0%   2-163
+services/judge/scorer.py                                 348     33    91%   251-259, 275-283, 293, 314, 409, 468, 476, 485, 490-498, 590, 600, 607-610, 614, 670, 681-685, 721, 741-755
+services/optimizer/__init__.py                             8      0   100%
+services/optimizer/backends.py                           126      6    95%   62, 66, 70, 171, 258, 277
+services/optimizer/bandit.py                              65     17    74%   91, 95, 134-146, 167-187, 219-220
+services/optimizer/bayesian.py                            99     15    85%   53, 93, 134, 197-201, 207, 219-227
+services/optimizer/benchmarks/__init__.py                  4      0   100%
+services/optimizer/benchmarks/harness.py                  91      3    97%   103, 156, 216
+services/optimizer/benchmarks/metrics.py                  74      6    92%   32, 50, 66, 91, 119, 172
+services/optimizer/benchmarks/problems.py                194     31    84%   118-123, 127-131, 147-160, 222-223, 228-233, 246-247, 270, 310, 341
+services/optimizer/constraints.py                        119     29    76%   51, 67, 86-90, 167, 169, 178, 204-209, 216, 220-236
+services/optimizer/evolutionary.py                       171      3    98%   99, 108, 277
+services/optimizer/optimizer.py                          263     41    84%   55, 77, 169-170, 184-185, 219, 224-229, 307, 328, 446, 478, 483, 502-522, 526-528, 534, 556-565, 570-585
+services/optimizer/stopping.py                           107     23    79%   78, 120-122, 126-128, 162-189
+services/orchestrator/__init__.py                          0      0   100%
+services/orchestrator/activities/__init__.py               5      0   100%
+services/orchestrator/activities/formalizer.py           191     30    84%   149-151, 166-169, 185, 208-218, 226, 259, 352, 355, 365, 368-369, 388-389, 422-424, 440, 443-444, 448, 482
+services/orchestrator/activities/optimization.py         112     95    15%   13-19, 29-35, 60-108, 121-145, 161-183, 196-246
+services/orchestrator/activities/pack_creation.py        147     52    65%   268-305, 319-329, 345-355, 362, 378-379, 412, 419, 427-442, 459-460, 470, 472, 474, 478-479
+services/orchestrator/activities/persistence.py          339    291    14%   24-26, 31-37, 42-75, 86-97, 106-127, 141-180, 185-215, 232-332, 346-417, 425-468, 476-498, 506-521, 532-546, 555-585, 597-609, 619-638, 643-660, 668-710
+services/orchestrator/activities/pipeline.py             229     87    62%   36-134, 146, 156-197, 234-239, 302, 329, 371, 398, 443-446, 488, 507, 540-564, 574-613
+services/orchestrator/activities/simulation.py           194    171    12%   23-72, 87-112, 120-132, 142-223, 237-269, 289-418, 430-443, 461
+services/orchestrator/config.py                           11      0   100%
+services/orchestrator/db.py                               10      2    80%   17-18
+services/orchestrator/worker.py                           24     24     0%   2-113
+services/orchestrator/workflows/__init__.py                3      3     0%   2-5
+services/orchestrator/workflows/optimization_loop.py      54     54     0%   2-167
+services/orchestrator/workflows/simulation_run.py        223    223     0%   2-643
+services/report/__init__.py                                0      0   100%
+services/report/pdf_builder.py                           201     96    52%   34-35, 44, 81-83, 98-112, 138-139, 160, 168-173, 177-181, 185-186, 190-193, 204, 208-211, 215-220, 232, 234, 238-254, 258-286, 291-297, 312
+services/sim_fabric/__init__.py                            7      0   100%
+services/sim_fabric/artifacts.py                         148    109    26%   33, 47-57, 60-65, 69, 80-92, 109-110, 122-125, 136-137, 146-164, 171-191, 199-224, 234-255, 264-291, 295-299, 303-307, 317-319
+services/sim_fabric/cache.py                              80     58    28%   20-25, 28, 53-61, 65-73, 79-96, 100-106, 110-118, 128-130
+services/sim_fabric/config.py                             20      0   100%
+services/sim_fabric/executor.py                          195    163    16%   31-53, 72-80, 87-94, 112-204, 216-260, 274-284, 292-300, 304-311, 315, 333-336, 346-363, 377-408, 424-439, 443-455, 459-466, 476-478
+services/sim_fabric/invariants.py                         99      6    94%   31, 112, 117, 199-208
+services/sim_fabric/isolation.py                          72     38    47%   71-96, 108, 122-188, 200, 221-236, 250-257
+services/sim_fabric/tracing.py                            89     40    55%   76, 85, 88, 92-93, 96, 113, 117-125, 133-144, 148-150, 162-170, 180-185, 194, 202, 207, 212, 217, 222, 232-234
+------------------------------------------------------------------------------------
+TOTAL                                                   7796   3415    56%
+Coverage XML written to file dissertation/chapter4/evidence/coverage.xml
+Coverage JSON written to file dissertation/chapter4/evidence/coverage.json
+
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_api_crud.py:14: testcontainers is required to run the API integration tests
+223 passed, 1 skipped, 31 warnings in 64.86s (0:01:04)
