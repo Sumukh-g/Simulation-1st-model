@@ -1,0 +1,30 @@
+{
+  "generated_at_utc": "2026-08-27T10:01:55.613942+00:00",
+  "note": "Runs executed in-process because Temporal was unavailable. Numbers come from domain-pack simulate() and DeterministicScorer.",
+  "runs": [
+    {
+      "run_id": "0d4b3950-4cda-4880-b371-9b0a58f2a77c",
+      "domain_pack": "toy-pack",
+      "n_candidates": 12,
+      "best_score": 0.8624261484940297,
+      "pdf": "/workspace/dissertation/chapter4/evidence/run_toy-pack.pdf",
+      "prompt": "Move closer to the target as efficiently as possible"
+    },
+    {
+      "run_id": "a16b28db-0da8-46fc-921b-0c8fc4ea9d84",
+      "domain_pack": "spatial-pack",
+      "n_candidates": 8,
+      "best_score": 0.6950839662171563,
+      "pdf": "/workspace/dissertation/chapter4/evidence/run_spatial-pack.pdf",
+      "prompt": "Reduce pollution concentration while keeping coverage of the monitored area"
+    },
+    {
+      "run_id": "2b4bbbf8-8f87-4787-bd0b-c2b20d33b03a",
+      "domain_pack": "finance-pack",
+      "n_candidates": 8,
+      "best_score": 0.7425627787554665,
+      "pdf": "/workspace/dissertation/chapter4/evidence/run_finance-pack.pdf",
+      "prompt": "Maximize portfolio returns while keeping risk low"
+    }
+  ]
+}

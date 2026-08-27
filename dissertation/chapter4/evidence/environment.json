@@ -1,0 +1,77 @@
+{
+  "captured_at_utc": "2026-08-27T09:48:45.594005+00:00",
+  "hostname": "cursor",
+  "repository": {
+    "commit": "7803baa721a12ca19e26e700425fe7be94bfc3a4",
+    "commit_short": "7803baa",
+    "branch": "cursor/chapter-4-results-07ee",
+    "working_tree_clean": false,
+    "status_porcelain": "?? dissertation/",
+            "remote": "https://github.com/Sumukh-g/Simulation-1st-model",
+    "log_head": "7803baa721a12ca19e26e700425fe7be94bfc3a4 2026-08-27 01:39:57 +0100 Enhance simulation and reporting features across services. Introduced PDF report generation for completed runs, including a new API endpoint for downloading reports. Updated simulation workflows to handle scenarios more effectively, ensuring better error reporting and state management. Improved UI components to support report viewing and added necessary types for report data handling. Refactored utility functions for better null handling in number formatting."
+  },
+  "os": {
+    "system": "Linux",
+    "release": "6.12.94+",
+    "version": "#1 SMP PREEMPT_DYNAMIC Wed Aug 26 20:41:45 UTC 2026",
+    "platform": "Linux-6.12.94+-x86_64-with-glibc2.39",
+    "os_release": "PRETTY_NAME=\"Ubuntu 24.04.4 LTS\"\nNAME=\"Ubuntu\"\nVERSION_ID=\"24.04\"\nVERSION=\"24.04.4 LTS (Noble Numbat)\"\nVERSION_CODENAME=noble\nID=ubuntu\nID_LIKE=debian\nHOME_URL=\"https://www.ubuntu.com/\"\nSUPPORT_URL=\"https://help.ubuntu.com/\"\nBUG_REPORT_URL=\"https://bugs.launchpad.net/ubuntu/\"\nPRIVACY_POLICY_URL=\"https://www.ubuntu.com/legal/terms-and-policies/privacy-policy\"\nUBUNTU_CODENAME=noble\nLOGO=ubuntu-logo\n"
+  },
+  "processor": {
+    "lscpu": "Architecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           46 bits physical, 57 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  4\nOn-line CPU(s) list:                     0-3\nVendor ID:                               GenuineIntel\nModel name:                              Intel(R) Xeon(R) Processor\nCPU family:                              6\nModel:                                   207\nThread(s) per core:                      1\nCore(s) per socket:                      4\nSocket(s):                               1\nStepping:                                2\nBogoMIPS:                                4800.00\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts mmx fxsr sse sse2 ss ht syscall nx pdpe1gb rdtscp lm constant_tsc pebs bts rep_good nopl xtopology nonstop_tsc cpuid tsc_known_freq pni pclmulqdq dtes64 vmx ssse3 fma cx16 pcid sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand hypervisor lahf_lm abm 3dnowprefetch cpuid_fault ssbd ibrs ibpb stibp ibrs_enhanced tpr_shadow flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves avx_vnni avx512_bf16 wbnoinvd arat vnmi avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg avx512_vpopcntdq rdpid bus_lock_detect cldemote movdiri movdir64b fsrm md_clear serialize tsxldtrk amx_bf16 avx512_fp16 amx_tile amx_int8 flush_l1d arch_capabilities\nVirtualization:                          VT-x\nHypervisor vendor:                       KVM\nVirtualization type:                     full\nL1d cache:                               192 KiB (4 instances)\nL1i cache:                               128 KiB (4 instances)\nL2 cache:                                8 MiB (4 instances)\nL3 cache:                                320 MiB (1 instance)\nNUMA node(s):                            1\nNUMA node0 CPU(s):                       0-3\nVulnerability Gather data sampling:      Not affected\nVulnerability Indirect target selection: Not affected\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Not affected\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI BHI_DIS_S\nVulnerability Srbds:                     Not affected\nVulnerability Tsa:                       Not affected\nVulnerability Tsx async abort:           Mitigation; TSX disabled\nVulnerability Vmscape:                   Not affected",
+    "cpu_count": 4
+  },
+  "memory": {
+    "free": "total        used        free      shared  buff/cache   available\nMem:            15Gi       942Mi        10Gi        44Mi       5.1Gi        14Gi\nSwap:             0B          0B          0B"
+  },
+  "gpu": {
+    "nvidia_smi": "No NVIDIA GPU detected"
+  },
+  "software": {
+    "python": "3.12.3 (main, Jul 15 2026, 23:46:41) [GCC 13.3.0]",
+    "python_executable": "/workspace/.venv/bin/python",
+    "node": "v22.14.0",
+    "npm": "10.9.7",
+    "docker": "Docker version 29.1.3, build 29.1.3-0ubuntu3~24.04.2",
+    "docker_compose": "Docker Compose version 2.40.3+ds1-0ubuntu1~24.04.1",
+    "docker_info_error": "failed to connect to the docker API at unix:///var/run/docker.sock; check if the path is correct and if the daemon is running: dial unix /var/run/docker.sock: connect: no such file or directory",
+    "postgres": "psql (PostgreSQL) 16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+    "redis": "Redis server v=7.0.15 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=e53ff17674aa6190",
+    "libreoffice": "LibreOffice 24.2.7.2 420(Build:2)"
+  },
+  "python_packages": "alembic==1.13.1\nannotated-doc==0.0.5\nannotated-types==0.8.0\nanyio==4.14.2\nargon2-cffi==25.1.0\nargon2-cffi-bindings==26.1.0\nasyncpg==0.29.0\nattrs==26.1.0\ncachetools==7.1.7\ncertifi==2026.7.22\ncffi==2.1.1\ncharset-normalizer==3.5.1\nclick==8.5.0\ncontourpy==1.3.3\ncoverage==7.15.4\ncycler==0.12.1\ndefusedxml==0.7.1\ndistro==1.9.0\ndnspython==2.8.0\nemail-validator==2.3.0\nfastapi==0.111.0\nfastapi-cli==0.0.32\nfilelock==3.32.4\nfonttools==4.63.0\nfpdf2==2.8.2\ngreenlet==3.5.5\ngrpcio==1.83.0\nh11==0.16.0\nhttpcore==1.0.9\nhttptools==0.8.0\nhttpx==0.27.0\nidna==3.19\niniconfig==2.3.0\nJinja2==3.1.6\njiter==0.16.0\njoblib==1.5.3\njsonschema==4.26.0\njsonschema-specifications==2025.9.1\nkiwisolver==1.5.0\nlxml==6.1.2\nMako==1.4.1\nmarkdown-it-py==4.2.0\nMarkupSafe==3.0.3\nmatplotlib==3.9.2\nmdurl==0.1.2\nminio==7.2.7\nmsgpack==1.2.1\nnumpy==2.0.2\nopenai==1.59.8\norjson==3.12.0\npackaging==26.3\npandas==3.0.5\npgvector==0.2.5\npillow==10.4.0\npluggy==1.6.0\nprometheus_client==0.20.0\nprotobuf==7.36.0\npycparser==3.0\npycryptodome==3.23.0\npydantic==2.7.1\npydantic-settings==2.2.1\npydantic_core==2.18.2\nPygments==2.21.0\npymilvus==2.6.8\npyparsing==3.3.2\npytest==8.2.0\npytest-asyncio==0.23.7\npytest-cov==5.0.0\npython-dateutil==2.9.0.post0\npython-docx==1.1.2\npython-dotenv==1.2.1\npython-multipart==0.0.32\nPyYAML==6.0.1\nray==2.53.0\nredis==5.0.4\nreferencing==0.37.0\nrequests==2.34.2\nrich==15.0.0\nrich-toolkit==0.20.3\nrpds-py==2026.6.3\nruff==0.14.3\nscikit-learn==1.5.2\nscipy==1.14.1\nsetuptools==84.0.0\nshellingham==1.5.4\nsix==1.17.0\nsniffio==1.3.1\nSQLAlchemy==2.0.30\nsse-starlette==2.1.0\nstarlette==0.37.2\ntemporalio==1.6.0\nthreadpoolctl==3.6.0\ntqdm==4.70.0\ntyper==0.27.1\ntypes-protobuf==7.35.1.20260826\ntyping_extensions==4.16.0\nujson==5.13.0\nurllib3==2.7.0\nuvicorn==0.52.4\nuvloop==0.22.1\nwatchfiles==1.2.0\nwebsockets==17.1\nwheel==0.48.0",
+  "commands": {
+    "start_services": [
+      "sudo service postgresql start",
+      "sudo service redis-server start",
+      "DATABASE_URL=postgresql+asyncpg://gsip:gsip_password@localhost:5432/gsip alembic upgrade head (services/api)",
+      "DATABASE_URL=postgresql+asyncpg://gsip:gsip_password@localhost:5432/gsip python scripts/seed_data.py",
+      "DATABASE_URL=postgresql+asyncpg://gsip:gsip_password@localhost:5432/gsip RAY_ADDRESS=local uvicorn services.api.main:app --host 127.0.0.1 --port 8000",
+      "cd apps/web && npm run dev",
+      "cd apps/admin && npm run dev"
+    ],
+    "tests": [
+      "pytest -m \"not integration and not slow\" --cov --cov-report=term --cov-report=json --cov-report=xml",
+      "ruff check core/ libs/ compute/ services/ scripts/ tests/",
+      "cd apps/web && npm test -- --run"
+    ],
+    "benchmarks": [
+      "python dissertation/chapter4/run_benchmark_campaign.py"
+    ]
+  },
+  "environment_variables_material": {
+    "DATABASE_URL": "postgresql+asyncpg://gsip:gsip_password@localhost:5432/gsip",
+    "RAY_ADDRESS": "local",
+    "GSIP_DEMO_AUTH": "true (library default; not overridden)",
+    "note": "Local Postgres listens on 5432. The repository default is 5433 for Docker Compose. Secrets were not recorded."
+  },
+  "random_seed_policy": "Independent integer seeds 1 to 10 inclusive per backend and problem. Same seed reused for same-seed replay checks.",
+  "timeout_retry": "Benchmark runs have no extra timeout beyond library defaults. Temporal retry policy was not exercised because Temporal was not running.",
+  "differences_from_submitted_repository": [
+    "Experiments ran from commit 7803baa with a clean working tree relative to application source.",
+    "Python packages were installed into a local virtualenv at .venv; this path is gitignored.",
+    "Docker daemon could not start (overlay2 unsupported in this environment), so Postgres 16 and Redis 7 were used natively instead of the Compose stack (Postgres 15 pgvector image, Temporal, MinIO).",
+    "No Temporal, MinIO, Milvus or Ray cluster services were available.",
+    "The application source was not modified."
+  ]
+}

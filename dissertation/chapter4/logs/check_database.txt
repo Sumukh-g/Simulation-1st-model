@@ -1,0 +1,5 @@
+checking localhost:5432/gsip
+migration head: 0001_initial
+tables present: 41
+pgvector available: 0.6.0
+database OK

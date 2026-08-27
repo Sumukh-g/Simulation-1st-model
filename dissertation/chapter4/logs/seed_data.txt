@@ -1,0 +1,11 @@
+==================================================
+GSIP Seed Data Loader
+==================================================
+
+==================================================
+Loaded: 3 domain packs, 3 rubrics, 4 benchmarks, project=Demo Project
+Demo X-User-Id: 91fc0c4b-aedf-46fc-b817-5e77fb53b8c2
+Demo X-Org-Id:  f309983c-685a-4464-8db7-25aa1defa9b2
+Demo project:   d2dc51ec-0c2d-42ea-b969-bbfd726ced4f
+Pack names:     toy-pack | finance-pack | spatial-pack
+==================================================

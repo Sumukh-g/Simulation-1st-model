@@ -1,0 +1,35 @@
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`typing.Optional` imported but unused[0m
+ [1m[94m-->[0m services/report/pdf_builder.py:5:37
+  [1m[94m|[0m
+[1m[94m4 |[0m from datetime import datetime
+[1m[94m5 |[0m from typing import Any, Dict, List, Optional
+  [1m[94m|[0m                                     [1m[91m^^^^^^^^[0m
+[1m[94m6 |[0m
+[1m[94m7 |[0m from fpdf.enums import XPos, YPos
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `typing.Optional`[0m
+
+[1m[91mE741 [0m[1mAmbiguous variable name: `l`[0m
+   [1m[94m-->[0m services/report/pdf_builder.py:297:45
+    [1m[94m|[0m
+[1m[94m295 |[0m         if limitations:
+[1m[94m296 |[0m             _write_line(pdf, 5, "Limitations:")
+[1m[94m297 |[0m             _write_bullets(pdf, [str(l) for l in limitations])
+    [1m[94m|[0m                                             [1m[91m^[0m
+[1m[94m298 |[0m
+[1m[94m299 |[0m     _write_section(pdf, "Important Notes")
+    [1m[94m|[0m
+
+[1m[91mF401 [0m[[1m[96m*[0m] [1m`pytest` imported but unused[0m
+ [1m[94m-->[0m tests/test_ephemeral_pack.py:2:8
+  [1m[94m|[0m
+[1m[94m1 |[0m """Tests for ephemeral domain pack execution."""
+[1m[94m2 |[0m import pytest
+  [1m[94m|[0m        [1m[91m^^^^^^[0m
+[1m[94m3 |[0m
+[1m[94m4 |[0m from compute.domain_packs.ephemeral_pack import EphemeralDomainPack, sanitize_pack_schemas
+  [1m[94m|[0m
+[1m[96mhelp[0m: [1mRemove unused import: `pytest`[0m
+
+Found 3 errors.
+[[36m*[0m] 2 fixable with the `--fix` option.
